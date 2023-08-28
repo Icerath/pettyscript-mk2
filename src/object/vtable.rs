@@ -1,4 +1,4 @@
-use crate::vm::prelude::*;
+use crate::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct Vtable {

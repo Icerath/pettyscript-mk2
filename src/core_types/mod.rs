@@ -1,4 +1,4 @@
-use crate::vm::prelude::*;
+use crate::prelude::*;
 
 impl CanObj for i64 {
     fn get_item(obj: &Obj<PtyPtr>, key: &str) -> Obj<PtyPtr> {

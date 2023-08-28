@@ -1,6 +1,6 @@
 use std::mem::transmute;
 
-use crate::vm::prelude::*;
+use crate::prelude::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct PtyPtr;
