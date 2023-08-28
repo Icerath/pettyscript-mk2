@@ -1,3 +1,5 @@
+use std::mem::transmute;
+
 use crate::vm::prelude::*;
 
 #[derive(Clone, Copy)]
@@ -10,10 +12,16 @@ impl CanObj for PtyPtr {
 }
 
 impl Obj<PtyPtr> {
-    pub fn try_cast<T: CanObj>(&self) -> Option<&Obj<T>> {
+    pub fn try_cast_ref<T: CanObj>(&self) -> Option<&Obj<T>> {
         if std::any::type_name::<T>() != self.typename {
             return None;
         }
         unsafe { (self as *const Self).cast::<Obj<T>>().as_ref() }
+    }
+    pub fn try_cast<T: CanObj>(self) -> Option<Obj<T>> {
+        if std::any::type_name::<T>() != self.typename {
+            return None;
+        }
+        Some(unsafe { transmute(self) })
     }
 }
