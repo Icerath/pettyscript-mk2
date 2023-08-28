@@ -1,8 +1,6 @@
-mod can_obj;
 mod ptyptr;
 mod vtable;
 
-pub use can_obj::CanObj;
 use core::fmt;
 use core::ptr::NonNull;
 pub use ptyptr::PtyPtr;
@@ -16,6 +14,12 @@ pub struct Obj<T: CanObj> {
     inner: NonNull<T>,
     typename: &'static str,
     vtable: Vtable,
+}
+
+pub trait CanObj: Clone {
+    fn get_item(obj: &Obj<PtyPtr>, key: &str) -> Obj<PtyPtr>;
+    fn set_item(obj: &Obj<PtyPtr>, key: &str, val: &Obj<PtyPtr>);
+    fn call(obj: &Obj<PtyPtr>) -> Obj<PtyPtr>;
 }
 
 pub trait ObjNew<T> {
@@ -58,7 +62,7 @@ impl<T: CanObj + Copy> ObjNew<T> for Obj<T> {
 
 impl<T: CanObj> Obj<T> {
     pub fn cast_petty(self) -> Obj<PtyPtr> {
-        unsafe { std::mem::transmute(self) }
+        unsafe { transmute(self) }
     }
     pub fn cast_petty_ref(&self) -> &Obj<PtyPtr> {
         unsafe { &*(self as *const Obj<T>).cast() }
@@ -145,8 +149,8 @@ mod tests {
         assert_eq!(size_of::<Obj<T>>(), size_of::<Obj<PtyPtr>>());
         let obj = Obj::new(val);
 
-        let obj_repr: [u8; 40] = unsafe { transmute(obj.clone()) };
-        let pty_repr: [u8; 40] = unsafe { transmute(obj.cast_petty()) };
+        let obj_repr: [u8; 56] = unsafe { transmute(obj.clone()) };
+        let pty_repr: [u8; 56] = unsafe { transmute(obj.cast_petty()) };
 
         pty_repr == obj_repr
     }

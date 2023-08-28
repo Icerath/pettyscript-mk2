@@ -2,12 +2,18 @@ use std::mem::transmute;
 
 use crate::vm::prelude::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct PtyPtr;
 
 impl CanObj for PtyPtr {
     fn get_item(obj: &Obj<PtyPtr>, key: &str) -> Obj<PtyPtr> {
         ((obj.vtable).get_item)(obj, key)
+    }
+    fn set_item(obj: &Obj<PtyPtr>, key: &str, val: &Obj<PtyPtr>) {
+        ((obj.vtable).set_item)(obj, key, val);
+    }
+    fn call(obj: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        ((obj.vtable).call)(obj)
     }
 }
 
