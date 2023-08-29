@@ -98,7 +98,7 @@ impl<T: CanObj> Obj<T> {
     pub fn get_item(&self, key: &str) -> Obj<PtyPtr> {
         T::get_item(self.cast_petty_ref(), key)
     }
-    pub fn is_copy(&self) -> bool {
+    pub fn is_value(&self) -> bool {
         unsafe { *self.ref_count.as_ptr() < 0 }
     }
 }
