@@ -17,9 +17,15 @@ pub struct Obj<T: CanObj> {
 }
 
 pub trait CanObj: Clone {
-    fn get_item(obj: &Obj<PtyPtr>, key: &str) -> Obj<PtyPtr>;
-    fn set_item(obj: &Obj<PtyPtr>, key: &str, val: &Obj<PtyPtr>);
-    fn call(obj: &Obj<PtyPtr>) -> Obj<PtyPtr>;
+    fn get_item(_obj: &Obj<PtyPtr>, _key: &str) -> Obj<PtyPtr> {
+        todo!()
+    }
+    fn set_item(_obj: &Obj<PtyPtr>, _key: &str, _val: &Obj<PtyPtr>) {
+        todo!()
+    }
+    fn call(_obj: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        todo!()
+    }
 }
 
 /// Marks a type as an immutable value type
@@ -83,7 +89,7 @@ impl<T: CanObj> Obj<T> {
     pub fn value(&self) -> &T {
         unsafe {
             if self.is_copy() {
-                std::ptr::addr_of!(self.value).cast::<T>().as_ref().unwrap()
+                &*std::ptr::addr_of!(self.value).cast::<T>()
             } else {
                 self.value.as_ref()
             }

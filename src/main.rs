@@ -1,10 +1,11 @@
 #![allow(incomplete_features)]
 #![feature(specialization)]
 
-mod core_types;
-mod object;
-mod prelude;
-mod vm;
+pub mod bytecode;
+pub mod core_types;
+pub mod object;
+pub mod prelude;
+pub mod vm;
 
 use prelude::*;
 

@@ -30,9 +30,13 @@ impl Obj<PtyPtr> {
         }
         unsafe { Some(self.cast_ref_unchecked()) }
     }
+    /// # Safety
+    /// The caller must guarantee that this object was originally created using T
     pub unsafe fn cast_unchecked<T: CanObj>(self) -> Obj<T> {
         transmute(self)
     }
+    /// # Safety
+    /// The caller must guarantee that this object was originally created using T
     pub unsafe fn cast_ref_unchecked<T: CanObj>(&self) -> &Obj<T> {
         &*(self as *const Self).cast::<Obj<T>>()
     }
