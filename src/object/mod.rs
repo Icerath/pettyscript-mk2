@@ -10,10 +10,10 @@ use vtable::Vtable;
 
 #[repr(C)]
 pub struct Obj<T: CanObj> {
-    ref_count: NonNull<isize>,
-    inner: NonNull<T>,
     typename: &'static str,
-    vtable: Vtable,
+    value: NonNull<T>,
+    ref_count: NonNull<isize>,
+    vtable: &'static Vtable,
 }
 
 pub trait CanObj: Clone {
@@ -23,38 +23,38 @@ pub trait CanObj: Clone {
 }
 
 pub trait ObjNew<T> {
-    fn new(inner: T) -> Self;
+    fn new(value: T) -> Self;
 }
 
 impl<T: CanObj> ObjNew<T> for Obj<T> {
-    default fn new(inner: T) -> Self {
+    default fn new(value: T) -> Self {
         debug_assert_ne!(type_name::<T>(), type_name::<i64>());
-        let inner = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(inner))) };
+        let value = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(value))) };
         let ref_count = NonNull::new(Box::into_raw(Box::new(1))).unwrap();
         let vtable = Vtable::new::<T>();
         let typename = type_name::<T>();
 
         Self {
-            ref_count,
-            inner,
             typename,
+            value,
+            ref_count,
             vtable,
         }
     }
 }
 
 impl<T: CanObj + Copy> ObjNew<T> for Obj<T> {
-    fn new(inner: T) -> Self {
+    fn new(value: T) -> Self {
         debug_assert_eq!(size_of::<T>(), size_of::<NonNull<T>>());
-        let inner = unsafe { transmute_copy(&inner) };
+        let value = unsafe { transmute_copy(&value) };
         let ref_count = NonNull::new(Box::into_raw(Box::new(isize::MIN + 1))).unwrap();
-        let vtable = Vtable::new::<T>();
+        let vtable = &Vtable::new::<T>();
         let typename = type_name::<T>();
 
         Self {
-            ref_count,
-            inner,
             typename,
+            value,
+            ref_count,
             vtable,
         }
     }
@@ -70,12 +70,12 @@ impl<T: CanObj> Obj<T> {
     pub fn get_item(&self, key: &str) -> Obj<PtyPtr> {
         T::get_item(self.cast_petty_ref(), key)
     }
-    pub fn inner(&self) -> &T {
+    pub fn value(&self) -> &T {
         unsafe {
             if self.is_copy() {
-                std::ptr::addr_of!(self.inner).cast::<T>().as_ref().unwrap()
+                std::ptr::addr_of!(self.value).cast::<T>().as_ref().unwrap()
             } else {
-                self.inner.as_ref()
+                self.value.as_ref()
             }
         }
     }
@@ -95,12 +95,24 @@ impl<T: CanObj> fmt::Display for Obj<T> {
     }
 }
 
+impl<T: CanObj> Clone for Obj<T> {
+    fn clone(&self) -> Self {
+        unsafe { *self.ref_count.as_ptr() += 1 };
+        Self {
+            ref_count: self.ref_count,
+            value: self.value,
+            typename: self.typename,
+            vtable: self.vtable,
+        }
+    }
+}
+
 impl<T: CanObj> Drop for Obj<T> {
     fn drop(&mut self) {
         unsafe {
             *self.ref_count.as_ptr() -= 1;
             if *self.ref_count.as_ptr() == 0 {
-                std::ptr::drop_in_place(self.inner.as_ptr());
+                std::ptr::drop_in_place(self.value.as_ptr());
             }
         }
     }
@@ -111,8 +123,8 @@ impl<T: CanObj> fmt::Debug for Obj<T> {
     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Obj")
             .field("type", &self.typename)
+            .field("value", &"")
             .field("ref_count", unsafe { self.ref_count.as_ref() })
-            .field("inner", &"")
             .finish()
     }
 }
@@ -122,21 +134,9 @@ impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Obj")
             .field("type", &self.typename)
+            .field("value", self.value())
             .field("ref_count", unsafe { self.ref_count.as_ref() })
-            .field("inner", self.inner())
             .finish()
-    }
-}
-
-impl<T: CanObj> Clone for Obj<T> {
-    fn clone(&self) -> Self {
-        unsafe { *self.ref_count.as_ptr() += 1 };
-        Self {
-            ref_count: self.ref_count,
-            inner: self.inner,
-            typename: self.typename,
-            vtable: self.vtable,
-        }
     }
 }
 
@@ -149,8 +149,8 @@ mod tests {
         assert_eq!(size_of::<Obj<T>>(), size_of::<Obj<PtyPtr>>());
         let obj = Obj::new(val);
 
-        let obj_repr: [u8; 56] = unsafe { transmute(obj.clone()) };
-        let pty_repr: [u8; 56] = unsafe { transmute(obj.cast_petty()) };
+        let obj_repr: [u8; 40] = unsafe { transmute(obj.clone()) };
+        let pty_repr: [u8; 40] = unsafe { transmute(obj.cast_petty()) };
 
         pty_repr == obj_repr
     }
