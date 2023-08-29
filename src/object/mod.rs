@@ -83,9 +83,8 @@ impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
 }
 
 impl ObjImpl<PtyPtr> for Obj<PtyPtr> {
-    /// Unimplimented
     fn value(&self) -> &PtyPtr {
-        unimplemented!()
+        &PtyPtr
     }
 }
 
