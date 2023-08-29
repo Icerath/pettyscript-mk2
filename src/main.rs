@@ -10,8 +10,8 @@ pub mod vm;
 use prelude::*;
 
 fn main() {
-    let value = 1i64;
+    let value = String::from("Hello, World!");
     let obj = Obj::new(value).cast_petty();
-    let str = obj.cast_ref::<i64>();
-    println!("{str:?}");
+    let value = obj.cast_ref::<String>().unwrap();
+    println!("{}", value.value());
 }

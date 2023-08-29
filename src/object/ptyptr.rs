@@ -1,6 +1,5 @@
-use std::mem::transmute;
-
 use crate::prelude::*;
+use std::mem::transmute;
 
 #[derive(Clone, Copy, Debug)]
 pub struct PtyPtr;
@@ -19,13 +18,13 @@ impl CanObj for PtyPtr {
 
 impl Obj<PtyPtr> {
     pub fn cast<T: CanObj>(self) -> Option<Obj<T>> {
-        if std::any::type_name::<T>() != self.typename {
+        if type_id::<T>() != self.type_id {
             return None;
         }
         Some(unsafe { self.cast_unchecked() })
     }
     pub fn cast_ref<T: CanObj>(&self) -> Option<&Obj<T>> {
-        if std::any::type_name::<T>() != self.typename {
+        if type_id::<T>() != self.type_id {
             return None;
         }
         unsafe { Some(self.cast_ref_unchecked()) }
