@@ -9,12 +9,8 @@ mod vm;
 use prelude::*;
 
 fn main() {
-    let obj = unsafe {
-        Obj::new(String::from("Hello, World!"))
-            .cast_petty()
-            .cast_unchecked::<String>()
-    };
-    let obj2 = obj.clone();
-    drop(obj2);
-    println!("{obj:?}");
+    let value = 1i64;
+    let obj = Obj::new(value).cast_petty();
+    let str = obj.cast_ref::<i64>();
+    println!("{str:?}");
 }

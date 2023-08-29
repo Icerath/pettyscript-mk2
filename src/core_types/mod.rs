@@ -12,6 +12,8 @@ impl CanObj for i64 {
     }
 }
 
+impl ValueObj for i64 {}
+
 impl CanObj for String {
     fn get_item(obj: &Obj<PtyPtr>, key: &str) -> Obj<PtyPtr> {
         todo!()

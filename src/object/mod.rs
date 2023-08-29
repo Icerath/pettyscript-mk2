@@ -22,8 +22,18 @@ pub trait CanObj: Clone {
     fn call(obj: &Obj<PtyPtr>) -> Obj<PtyPtr>;
 }
 
-pub trait ObjNew<T> {
+/// Marks a type as an immutable value type
+pub trait ValueObj {}
+
+pub trait ObjNew<T>: private::Seal {
     fn new(value: T) -> Self;
+}
+
+mod private {
+    use super::{CanObj, Obj};
+    pub trait Seal {}
+
+    impl<T: CanObj> Seal for Obj<T> {}
 }
 
 impl<T: CanObj> ObjNew<T> for Obj<T> {
@@ -43,7 +53,7 @@ impl<T: CanObj> ObjNew<T> for Obj<T> {
     }
 }
 
-impl<T: CanObj + Copy> ObjNew<T> for Obj<T> {
+impl<T: CanObj + ValueObj> ObjNew<T> for Obj<T> {
     fn new(value: T) -> Self {
         debug_assert_eq!(size_of::<T>(), size_of::<NonNull<T>>());
         let value = unsafe { transmute_copy(&value) };
