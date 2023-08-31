@@ -1,4 +1,5 @@
 #![allow(incomplete_features)]
+#![feature(const_mut_refs)]
 #![feature(specialization)]
 
 pub mod bytecode;
@@ -10,8 +11,7 @@ pub mod vm;
 use prelude::*;
 
 fn main() {
-    let value = String::from("Hello, World!");
-    let obj = Obj::new(value).cast_petty();
+    let obj = Obj::new(String::from("Hello, World!")).cast_petty();
     let value = obj.cast_ref::<String>().unwrap();
-    println!("{}", value.value());
+    println!("{:?}", value.value());
 }

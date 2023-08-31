@@ -5,14 +5,17 @@ use std::mem::transmute;
 pub struct PtyPtr;
 
 impl CanObj for PtyPtr {
-    fn get_item(obj: &Obj<PtyPtr>, key: &str) -> Obj<PtyPtr> {
-        ((obj.vtable).get_item)(obj, key)
+    fn get_item(vm: &mut Vm, obj: &Obj<PtyPtr>, key: &str) -> Obj<PtyPtr> {
+        ((obj.vtable).get_item)(vm, obj, key)
     }
-    fn set_item(obj: &Obj<PtyPtr>, key: &str, val: &Obj<PtyPtr>) {
-        ((obj.vtable).set_item)(obj, key, val);
+    fn set_item(vm: &mut Vm, obj: &Obj<PtyPtr>, key: &str, val: &Obj<PtyPtr>) {
+        ((obj.vtable).set_item)(vm, obj, key, val);
     }
-    fn call(obj: &Obj<PtyPtr>) -> Obj<PtyPtr> {
-        ((obj.vtable).call)(obj)
+    fn call(vm: &mut Vm, obj: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        ((obj.vtable).call)(vm, obj)
+    }
+    fn delete(obj: &Obj<PtyPtr>) {
+        (obj.vtable.delete)(obj);
     }
 }
 

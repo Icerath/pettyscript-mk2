@@ -2,9 +2,10 @@ use crate::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct Vtable {
-    pub get_item: fn(&Obj<PtyPtr>, &str) -> Obj<PtyPtr>,
-    pub set_item: fn(&Obj<PtyPtr>, &str, &Obj<PtyPtr>),
-    pub call: fn(&Obj<PtyPtr>) -> Obj<PtyPtr>,
+    pub get_item: fn(&mut Vm, &Obj<PtyPtr>, &str) -> Obj<PtyPtr>,
+    pub set_item: fn(&mut Vm, &Obj<PtyPtr>, &str, &Obj<PtyPtr>),
+    pub call: fn(&mut Vm, &Obj<PtyPtr>) -> Obj<PtyPtr>,
+    pub delete: fn(&Obj<PtyPtr>),
 }
 
 impl Vtable {
@@ -13,6 +14,7 @@ impl Vtable {
             get_item: T::get_item,
             set_item: T::set_item,
             call: T::call,
+            delete: T::delete,
         }
     }
 }

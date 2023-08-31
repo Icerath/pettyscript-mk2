@@ -1,7 +1,7 @@
 mod ptyptr;
 mod vtable;
 
-use core::fmt;
+use crate::prelude::*;
 use core::ptr::NonNull;
 pub use ptyptr::PtyPtr;
 use std::any::type_name;
@@ -16,15 +16,20 @@ pub struct Obj<T: CanObj> {
     vtable: &'static Vtable,
 }
 
-pub trait CanObj {
-    fn get_item(_obj: &Obj<PtyPtr>, _key: &str) -> Obj<PtyPtr> {
-        todo!()
+pub trait CanObj: fmt::Debug + Sized {
+    fn get_item(vm: &mut Vm, _obj: &Obj<PtyPtr>, _key: &str) -> Obj<PtyPtr> {
+        vm.raise_not_implemented();
+        Obj::new(Null).cast_petty()
     }
-    fn set_item(_obj: &Obj<PtyPtr>, _key: &str, _val: &Obj<PtyPtr>) {
-        todo!()
+    fn set_item(vm: &mut Vm, _obj: &Obj<PtyPtr>, _key: &str, _val: &Obj<PtyPtr>) {
+        vm.raise_not_implemented();
     }
-    fn call(_obj: &Obj<PtyPtr>) -> Obj<PtyPtr> {
-        todo!()
+    fn call(vm: &mut Vm, _obj: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        vm.raise_not_implemented();
+        Obj::new(Null).cast_petty()
+    }
+    fn delete(obj: &Obj<PtyPtr>) {
+        unsafe { dealloc(obj.cast_ref_unchecked::<Self>().value) };
     }
 }
 
@@ -45,8 +50,8 @@ mod private {
 
 impl<T: CanObj> ObjImpl<T> for Obj<T> {
     default fn new(value: T) -> Self {
-        let value = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(value))) };
-        let ref_count = NonNull::new(Box::into_raw(Box::new(1))).unwrap();
+        let value = unsafe { alloc(value) };
+        let ref_count = unsafe { alloc(1isize) };
         let vtable = Vtable::new::<T>();
         let type_id = type_id::<T>();
 
@@ -66,7 +71,7 @@ impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
     fn new(value: T) -> Self {
         debug_assert_eq!(size_of::<T>(), size_of::<NonNull<T>>());
         let value = unsafe { transmute_copy(&value) };
-        let ref_count = NonNull::new(Box::into_raw(Box::new(isize::MIN + 1))).unwrap();
+        let ref_count = unsafe { alloc(isize::MIN + 1) };
         let vtable = &Vtable::new::<T>();
         let type_id = type_id::<T>();
 
@@ -95,8 +100,8 @@ impl<T: CanObj> Obj<T> {
     pub fn cast_petty_ref(&self) -> &Obj<PtyPtr> {
         unsafe { &*(self as *const Obj<T>).cast() }
     }
-    pub fn get_item(&self, key: &str) -> Obj<PtyPtr> {
-        T::get_item(self.cast_petty_ref(), key)
+    pub fn get_item(&self, vm: &mut Vm, key: &str) -> Obj<PtyPtr> {
+        T::get_item(vm, self.cast_petty_ref(), key)
     }
     pub fn is_value(&self) -> bool {
         unsafe { *self.ref_count.as_ptr() < 0 }
@@ -131,22 +136,23 @@ impl<T: CanObj> Drop for Obj<T> {
         unsafe {
             *self.ref_count.as_ptr() -= 1;
             if *self.ref_count.as_ptr() == 0 {
-                std::ptr::drop_in_place(self.value.as_ptr());
+                T::delete(self.cast_petty_ref());
+                dealloc(self.ref_count);
             }
         }
     }
 }
 
-#[allow(clippy::missing_fields_in_debug)]
-impl<T: CanObj> fmt::Debug for Obj<T> {
-    default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Obj")
-            .field("type_id", &self.type_id)
-            .field("value", &"")
-            .field("ref_count", unsafe { self.ref_count.as_ref() })
-            .finish()
-    }
-}
+// #[allow(clippy::missing_fields_in_debug)]
+// impl<T: CanObj> fmt::Debug for Obj<T> {
+//     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         f.debug_struct("Obj")
+//             .field("type_id", &self.type_id)
+//             .field("value", &"")
+//             .field("ref_count", unsafe { self.ref_count.as_ref() })
+//             .finish()
+//     }
+// }
 
 #[allow(clippy::missing_fields_in_debug)]
 impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
