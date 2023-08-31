@@ -1,6 +1,9 @@
 mod ptyptr;
 mod vtable;
 
+#[cfg(test)]
+mod tests;
+
 use crate::prelude::*;
 use core::ptr::NonNull;
 pub use ptyptr::PtyPtr;
@@ -134,11 +137,11 @@ impl<T: CanObj> Clone for Obj<T> {
 impl<T: CanObj> Drop for Obj<T> {
     fn drop(&mut self) {
         unsafe {
-            *self.ref_count.as_ptr() -= 1;
-            if *self.ref_count.as_ptr() == 0 {
+            if *self.ref_count.as_ptr() == 1 {
                 T::delete(self.cast_petty_ref());
                 dealloc(self.ref_count);
             }
+            *self.ref_count.as_ptr() -= 1;
         }
     }
 }
@@ -167,26 +170,4 @@ impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
 
 pub fn type_id<T: CanObj>() -> usize {
     (type_name::<T>() as *const str).cast::<()>() as usize
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::mem::{size_of, transmute};
-
-    fn is_valid<T: CanObj>(val: T) -> bool {
-        assert_eq!(size_of::<Obj<T>>(), size_of::<Obj<PtyPtr>>());
-        let obj = Obj::new(val);
-
-        let obj_repr: [u8; 32] = unsafe { transmute(obj.clone()) };
-        let pty_repr: [u8; 32] = unsafe { transmute(obj.cast_petty()) };
-
-        pty_repr == obj_repr
-    }
-
-    #[test]
-    fn test_valid() {
-        assert!(is_valid(0));
-        assert!(is_valid(String::new()));
-    }
 }
