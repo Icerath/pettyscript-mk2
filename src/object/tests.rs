@@ -26,15 +26,17 @@ struct Deleter(*mut bool);
 
 impl CanObj for Deleter {
     fn delete(obj: &Obj<PtyPtr>) {
-        let self_ = obj.clone().cast::<Self>().unwrap();
-        let value = self_.value();
-        unsafe { *value.0 = !*value.0 };
-        unsafe { dealloc(self_.value) };
+        unsafe {
+            let this = obj.clone().cast_unchecked::<Self>();
+            let value = this.value();
+            *value.0 = !*value.0;
+            dealloc(this.value);
+        }
     }
 }
 #[test]
 fn test_deletion() {
     let mut is_deleted = false;
-    Obj::new(Deleter(&mut is_deleted as *mut bool));
+    Obj::new(Deleter(std::ptr::addr_of_mut!(is_deleted)));
     assert!(is_deleted);
 }
