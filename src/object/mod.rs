@@ -7,7 +7,6 @@ mod tests;
 use crate::prelude::*;
 use core::ptr::NonNull;
 pub use ptyptr::PtyPtr;
-use std::any::type_name;
 use std::mem::{size_of, transmute, transmute_copy};
 use vtable::Vtable;
 
@@ -19,7 +18,7 @@ pub struct Obj<T: CanObj> {
     vtable: &'static Vtable,
 }
 
-pub trait CanObj: fmt::Debug + Sized {
+pub trait CanObj: fmt::Debug + Sized + 'static {
     fn get_item(vm: &mut Vm, _obj: &Obj<PtyPtr>, _key: &str) -> Obj<PtyPtr> {
         vm.raise_not_implemented();
         Obj::new(Null).cast_petty()
@@ -140,8 +139,9 @@ impl<T: CanObj> Drop for Obj<T> {
             if *self.ref_count.as_ptr() == 1 {
                 T::delete(self.cast_petty_ref());
                 dealloc(self.ref_count);
+            } else {
+                *self.ref_count.as_ptr() -= 1;
             }
-            *self.ref_count.as_ptr() -= 1;
         }
     }
 }
@@ -168,6 +168,6 @@ impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
     }
 }
 
-pub fn type_id<T: CanObj>() -> usize {
-    (type_name::<T>() as *const str).cast::<()>() as usize
+pub fn type_id<T: CanObj + 'static>() -> usize {
+    (unsafe { transmute::<_, u128>(std::any::TypeId::of::<T>()) } as usize)
 }

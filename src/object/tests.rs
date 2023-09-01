@@ -2,13 +2,13 @@ use super::*;
 
 /// tests that objects are dropped proplery
 #[derive(Debug)]
-struct Dropper<'a>(&'a mut bool);
-impl<'a> Drop for Dropper<'a> {
+struct Dropper(*mut bool);
+impl Drop for Dropper {
     fn drop(&mut self) {
-        *self.0 = !*self.0;
+        unsafe { *self.0 = !*self.0 };
     }
 }
-impl<'a> CanObj for Dropper<'a> {}
+impl CanObj for Dropper {}
 #[test]
 fn test_drop() {
     let mut is_dropped = false;

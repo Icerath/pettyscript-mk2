@@ -14,6 +14,6 @@ use prelude::*;
 
 fn main() {
     let obj = Obj::new(String::from("Hello, World!")).cast_petty();
-    let value = obj.cast_ref::<String>().unwrap();
-    println!("{:?}", value.value());
+    let value = obj.cast_ref::<String>();
+    println!("{:?}", value.map(Obj::value));
 }
