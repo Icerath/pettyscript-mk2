@@ -10,11 +10,24 @@ pub use ptyptr::PtyPtr;
 use std::mem::{size_of, transmute, transmute_copy};
 use vtable::Vtable;
 
+union Value<T> {
+    ptr: NonNull<T>,
+    val: usize,
+}
+
+impl<T> Clone for Value<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for Value<T> {}
+
 #[repr(C)]
 pub struct Obj<T: CanObj> {
     type_id: usize,
-    value: NonNull<T>,
-    ref_count: NonNull<isize>,
+    value: Value<T>,
+    ref_count: Option<NonNull<usize>>,
     vtable: &'static Vtable,
 }
 
@@ -31,12 +44,12 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
         Obj::new(Null).cast_petty()
     }
     fn delete(obj: &Obj<PtyPtr>) {
-        unsafe { dealloc(obj.cast_ref_unchecked::<Self>().value) };
+        unsafe { dealloc(obj.cast_ref_unchecked::<Self>().value.ptr) };
     }
 }
 
 /// Marks a type as an immutable value type
-pub trait ValueObj {}
+pub trait ValueObj: Copy {}
 
 pub trait ObjImpl<T>: private::Seal {
     fn new(value: T) -> Self;
@@ -52,8 +65,8 @@ mod private {
 
 impl<T: CanObj> ObjImpl<T> for Obj<T> {
     default fn new(value: T) -> Self {
-        let value = unsafe { alloc(value) };
-        let ref_count = unsafe { alloc(1isize) };
+        let value = unsafe { Value { ptr: alloc(value) } };
+        let ref_count = unsafe { Some(alloc(1)) };
         let vtable = Vtable::new::<T>();
         let type_id = type_id::<T>();
 
@@ -65,15 +78,17 @@ impl<T: CanObj> ObjImpl<T> for Obj<T> {
         }
     }
     default fn value(&self) -> &T {
-        unsafe { self.value.as_ref() }
+        unsafe { self.value.ptr.as_ref() }
     }
 }
 
 impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
     fn new(value: T) -> Self {
-        debug_assert_eq!(size_of::<T>(), size_of::<NonNull<T>>());
-        let value = unsafe { transmute_copy(&value) };
-        let ref_count = unsafe { alloc(isize::MIN + 1) };
+        debug_assert_eq!(size_of::<T>(), size_of::<usize>());
+        let value = Value {
+            val: unsafe { transmute_copy(&value) },
+        };
+        let ref_count = None;
         let vtable = &Vtable::new::<T>();
         let type_id = type_id::<T>();
 
@@ -106,7 +121,7 @@ impl<T: CanObj> Obj<T> {
         T::get_item(vm, self.cast_petty_ref(), key)
     }
     pub fn is_value(&self) -> bool {
-        unsafe { *self.ref_count.as_ptr() < 0 }
+        self.ref_count.is_none()
     }
 }
 
@@ -115,7 +130,7 @@ impl<T: CanObj> fmt::Display for Obj<T> {
         unsafe {
             f.debug_struct("Obj")
                 .field("type_id", &self.type_id)
-                .field("ref_count", self.ref_count.as_ref())
+                .field("ref_count", &self.ref_count.map(|ptr| ptr.as_ref()))
                 .finish()
         }
     }
@@ -123,7 +138,9 @@ impl<T: CanObj> fmt::Display for Obj<T> {
 
 impl<T: CanObj> Clone for Obj<T> {
     fn clone(&self) -> Self {
-        unsafe { *self.ref_count.as_ptr() += 1 };
+        if let Some(ref_count) = self.ref_count {
+            unsafe { *ref_count.as_ptr() += 1 };
+        }
         Self {
             ref_count: self.ref_count,
             value: self.value,
@@ -135,12 +152,15 @@ impl<T: CanObj> Clone for Obj<T> {
 
 impl<T: CanObj> Drop for Obj<T> {
     fn drop(&mut self) {
+        let Some(ref_count) = self.ref_count else {
+            return;
+        };
         unsafe {
-            if *self.ref_count.as_ptr() == 1 {
+            if *ref_count.as_ptr() == 1 {
                 T::delete(self.cast_petty_ref());
-                dealloc(self.ref_count);
+                dealloc(ref_count);
             } else {
-                *self.ref_count.as_ptr() -= 1;
+                *ref_count.as_ptr() -= 1;
             }
         }
     }
@@ -163,7 +183,9 @@ impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
         f.debug_struct("Obj")
             .field("type_id", &self.type_id)
             .field("value", self.value())
-            .field("ref_count", unsafe { self.ref_count.as_ref() })
+            .field("ref_count", unsafe {
+                &self.ref_count.map(|ptr| ptr.as_ref())
+            })
             .finish()
     }
 }

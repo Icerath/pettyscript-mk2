@@ -13,7 +13,12 @@ pub mod vm;
 use prelude::*;
 
 fn main() {
-    let obj = Obj::new(String::from("Hello, World!")).cast_petty();
-    let value = obj.cast_ref::<String>();
-    println!("{:?}", value.map(Obj::value));
+    let mut sum = Obj::new(0i64).cast_petty();
+    for i in 0..100_000_000 {
+        let i = Obj::new(i).cast_petty();
+        let temp_sum =
+            sum.cast_ref::<i64>().unwrap().value() + i.cast_ref::<i64>().unwrap().value();
+        sum = Obj::new(temp_sum).cast_petty();
+    }
+    println!("{:?}", sum.cast::<i64>());
 }

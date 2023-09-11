@@ -30,7 +30,7 @@ impl CanObj for Deleter {
             let this = obj.clone().cast_unchecked::<Self>();
             let value = this.value();
             *value.0 = !*value.0;
-            dealloc(this.value);
+            dealloc(this.value.ptr);
         }
     }
 }
