@@ -7,15 +7,16 @@ pub use std::ptr::NonNull;
 pub use std::rc::Rc;
 
 #[inline]
-/// # Safety
-pub unsafe fn alloc<T: fmt::Debug>(val: T) -> NonNull<T> {
+pub fn alloc<T: fmt::Debug>(val: T) -> NonNull<T> {
     println!("Alloc({val:?})");
-    NonNull::new_unchecked(Box::into_raw(Box::new(val)))
+    unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(val))) }
 }
 
 #[inline]
 /// # Safety
+/// It is up to the caller to guarantee that `Box::from_raw(ptr.as_ptr())` is safe.
 pub unsafe fn dealloc<T: fmt::Debug>(ptr: NonNull<T>) {
-    let val = Box::from_raw(ptr.as_ptr());
+    // It is up to the caller to determine if this is safe.
+    let val = unsafe { Box::from_raw(ptr.as_ptr()) };
     println!("Dealloc({val:?})");
 }

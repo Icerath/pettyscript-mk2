@@ -1,5 +1,23 @@
 use super::*;
 
+#[test]
+fn test_obj_casts() {
+    let petty_obj = Obj::new(String::from("Hello, World!")).cast_petty();
+    let ref_obj = petty_obj.cast_ref::<String>().unwrap();
+    assert_eq!(ref_obj.value(), "Hello, World!");
+    let obj = petty_obj.cast::<String>().unwrap();
+    assert_eq!(obj.value(), "Hello, World!");
+}
+
+#[test]
+fn test_value_obj_casts() {
+    let petty_obj = Obj::new(10 * 2 + 3).cast_petty();
+    let ref_obj = petty_obj.cast_ref::<i64>().unwrap();
+    assert_eq!(*ref_obj.value(), 10 * 2 + 3);
+    let obj = petty_obj.cast::<i64>().unwrap();
+    assert_eq!(*obj.value(), 10 * 2 + 3);
+}
+
 /// tests that objects are dropped proplery
 #[derive(Debug)]
 struct Dropper(*mut bool);
@@ -30,7 +48,7 @@ impl CanObj for Deleter {
             let this = obj.clone().cast_unchecked::<Self>();
             let value = this.value();
             *value.0 = !*value.0;
-            dealloc(this.value.ptr);
+            dealloc(this.value.assume_init());
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 impl CanObj for i64 {}
-impl ValueObj for i64 {}
+unsafe impl ValueObj for i64 {}
 
 pub struct Null;
 

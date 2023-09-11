@@ -7,26 +7,13 @@ mod tests;
 use crate::prelude::*;
 use core::ptr::NonNull;
 pub use ptyptr::PtyPtr;
-use std::mem::{size_of, transmute, transmute_copy};
+use std::mem::MaybeUninit;
 use vtable::Vtable;
-
-union Value<T> {
-    ptr: NonNull<T>,
-    val: usize,
-}
-
-impl<T> Clone for Value<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T> Copy for Value<T> {}
 
 #[repr(C)]
 pub struct Obj<T: CanObj> {
     type_id: usize,
-    value: Value<T>,
+    value: MaybeUninit<NonNull<T>>,
     ref_count: Option<NonNull<usize>>,
     vtable: &'static Vtable,
 }
@@ -44,12 +31,16 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
         Obj::new(Null).cast_petty()
     }
     fn delete(obj: &Obj<PtyPtr>) {
-        unsafe { dealloc(obj.cast_ref_unchecked::<Self>().value.ptr) };
+        unsafe { dealloc(obj.cast_ref_unchecked::<Self>().value.assume_init()) };
     }
 }
 
-/// Marks a type as an immutable value type
-pub trait ValueObj: Copy {}
+/// Types that implement this trait are stored inside the value ptr instead of being heap allocated.
+/// This also avoids the need for the `ref_count` meaning that creating an
+/// `Obj<T> where T: ValueObj` has 0 allocations.
+/// # Safety
+/// Types that implement `ValueObj` must be pointer sized.
+pub unsafe trait ValueObj: Copy {}
 
 pub trait ObjImpl<T>: private::Seal {
     fn new(value: T) -> Self;
@@ -65,11 +56,10 @@ mod private {
 
 impl<T: CanObj> ObjImpl<T> for Obj<T> {
     default fn new(value: T) -> Self {
-        let value = unsafe { Value { ptr: alloc(value) } };
-        let ref_count = unsafe { Some(alloc(1)) };
+        let value = MaybeUninit::new(alloc(value));
+        let ref_count = Some(alloc(1));
         let vtable = Vtable::new::<T>();
         let type_id = type_id::<T>();
-
         Self {
             type_id,
             value,
@@ -78,16 +68,13 @@ impl<T: CanObj> ObjImpl<T> for Obj<T> {
         }
     }
     default fn value(&self) -> &T {
-        unsafe { self.value.ptr.as_ref() }
+        unsafe { self.value.assume_init().as_ref() }
     }
 }
 
 impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
     fn new(value: T) -> Self {
-        debug_assert_eq!(size_of::<T>(), size_of::<usize>());
-        let value = Value {
-            val: unsafe { transmute_copy(&value) },
-        };
+        let value = unsafe { std::mem::transmute_copy(&value) };
         let ref_count = None;
         let vtable = &Vtable::new::<T>();
         let type_id = type_id::<T>();
@@ -100,6 +87,8 @@ impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
         }
     }
     fn value(&self) -> &T {
+        // This is safe as this is only being called where T: ValueObj
+        // which guarantees that self.value was created from T
         unsafe { &*std::ptr::addr_of!(self.value).cast::<T>() }
     }
 }
@@ -112,7 +101,7 @@ impl ObjImpl<PtyPtr> for Obj<PtyPtr> {
 
 impl<T: CanObj> Obj<T> {
     pub fn cast_petty(self) -> Obj<PtyPtr> {
-        unsafe { transmute(self) }
+        unsafe { std::mem::transmute(self) }
     }
     pub fn cast_petty_ref(&self) -> &Obj<PtyPtr> {
         unsafe { &*(self as *const Obj<T>).cast() }
@@ -191,5 +180,5 @@ impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
 }
 
 pub fn type_id<T: CanObj + 'static>() -> usize {
-    (unsafe { transmute::<_, u128>(std::any::TypeId::of::<T>()) } as usize)
+    (unsafe { std::mem::transmute::<_, u128>(std::any::TypeId::of::<T>()) } as usize)
 }
