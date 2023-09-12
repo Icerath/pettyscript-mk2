@@ -14,8 +14,4 @@ pub mod object;
 pub mod prelude;
 pub mod vm;
 
-use prelude::*;
-
-fn main() {
-    println!("{}", Obj::new(String::from("Hello, World!")));
-}
+fn main() {}

@@ -133,7 +133,7 @@ impl<T: CanObj> Obj<T> {
         unsafe { self.ref_count.map(|ptr| ptr.as_ref()) }
     }
     pub fn is_type<U: CanObj>(&self) -> bool {
-        dbg!(std::ptr::from_ref(self.vtable)) == dbg!(std::ptr::from_ref(U::VTABLE))
+        std::ptr::from_ref(self.vtable) == std::ptr::from_ref(U::VTABLE)
     }
 }
 
