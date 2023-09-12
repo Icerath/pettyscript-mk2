@@ -12,7 +12,6 @@ use vtable::Vtable;
 
 #[repr(C)]
 pub struct Obj<T: CanObj> {
-    type_id: usize,
     value: MaybeUninit<NonNull<T>>,
     ref_count: Option<NonNull<usize>>,
     vtable: &'static Vtable,
@@ -23,9 +22,14 @@ impl<T: CanObj> Obj<T> {
         // Safety: This ref count should always be valid
         unsafe { self.ref_count.map(|ptr| ptr.as_ref()) }
     }
+    pub fn is_type<U: CanObj>(&self) -> bool {
+        dbg!(std::ptr::from_ref(self.vtable)) == dbg!(std::ptr::from_ref(U::VTABLE))
+    }
 }
 
 pub trait CanObj: fmt::Debug + Sized + 'static {
+    // This can't be edited as the Vtable struct is private.
+    const VTABLE: &'static Vtable = Vtable::new::<Self>();
     fn get_item(vm: &mut Vm, _obj: &Obj<PtyPtr>, _key: &str) -> Obj<PtyPtr> {
         vm.raise_not_implemented();
         Obj::new(Null).cast_petty()
@@ -51,7 +55,7 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
         // Safety: This is safe as the caller must guarantee that this object was not created with a ValueType
         // and that this function will only ever be called once.
         unsafe {
-            dealloc(obj.cast_ref_unchecked::<Self>().value.assume_init());
+            dealloc(obj.downcast_ref_unchecked::<Self>().value.assume_init());
             dealloc(obj.ref_count.unwrap());
         };
     }
@@ -80,10 +84,8 @@ impl<T: CanObj> ObjImpl<T> for Obj<T> {
     default fn new(value: T) -> Self {
         let value = MaybeUninit::new(alloc(value));
         let ref_count = Some(alloc(1));
-        let vtable = Vtable::new::<T>();
-        let type_id = type_id::<T>();
+        let vtable = T::VTABLE;
         Self {
-            type_id,
             value,
             ref_count,
             vtable,
@@ -100,11 +102,9 @@ impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
         // Safety: It is up to implementors of the ValueObj trait to guarantee that this is safe.
         let value = unsafe { mem::transmute_copy(&value) };
         let ref_count = None;
-        let vtable = &Vtable::new::<T>();
-        let type_id = type_id::<T>();
+        let vtable = T::VTABLE;
 
         Self {
-            type_id,
             value,
             ref_count,
             vtable,
@@ -143,7 +143,6 @@ impl<T: CanObj> Obj<T> {
 impl<T: CanObj> fmt::Display for Obj<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Obj")
-            .field("type_id", &self.type_id)
             .field("ref_count", &self.ref_count())
             .finish()
     }
@@ -159,7 +158,6 @@ impl<T: CanObj> Clone for Obj<T> {
         Self {
             ref_count: self.ref_count,
             value: self.value,
-            type_id: self.type_id,
             vtable: self.vtable,
         }
     }
@@ -196,7 +194,6 @@ impl<T: CanObj> Drop for Obj<T> {
 impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Obj")
-            .field("type_id", &self.type_id)
             .field("value", self.value())
             .field("ref_count", &self.ref_count())
             .finish()

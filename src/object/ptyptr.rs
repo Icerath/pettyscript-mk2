@@ -20,28 +20,28 @@ impl CanObj for PtyPtr {
 }
 
 impl Obj<PtyPtr> {
-    pub fn cast<T: CanObj>(self) -> Option<Obj<T>> {
-        if type_id::<T>() != self.type_id {
+    pub fn downcast<T: CanObj>(self) -> Option<Obj<T>> {
+        if !self.is_type::<T>() {
             return None;
         }
         // Safety: We just checked that this was created with T.
-        Some(unsafe { self.cast_unchecked() })
+        Some(unsafe { self.downcast_unchecked() })
     }
-    pub fn cast_ref<T: CanObj>(&self) -> Option<&Obj<T>> {
-        if type_id::<T>() != self.type_id {
+    pub fn downcast_ref<T: CanObj>(&self) -> Option<&Obj<T>> {
+        if !self.is_type::<T>() {
             return None;
         }
         // Safety: We just checked that this was created with T.
-        unsafe { Some(self.cast_ref_unchecked()) }
+        unsafe { Some(self.downcast_ref_unchecked()) }
     }
     /// # Safety
     /// The caller must guarantee that this object was originally created using T
-    pub unsafe fn cast_unchecked<T: CanObj>(self) -> Obj<T> {
+    pub unsafe fn downcast_unchecked<T: CanObj>(self) -> Obj<T> {
         transmute(self)
     }
     /// # Safety
     /// The caller must guarantee that this object was originally created using T
-    pub unsafe fn cast_ref_unchecked<T: CanObj>(&self) -> &Obj<T> {
+    pub unsafe fn downcast_ref_unchecked<T: CanObj>(&self) -> &Obj<T> {
         &*(self as *const Self).cast::<Obj<T>>()
     }
 }

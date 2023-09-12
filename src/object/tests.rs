@@ -3,18 +3,18 @@ use super::*;
 #[test]
 fn test_obj_casts() {
     let petty_obj = Obj::new(String::from("Hello, World!")).cast_petty();
-    let ref_obj = petty_obj.cast_ref::<String>().unwrap();
+    let ref_obj = petty_obj.downcast_ref::<String>().unwrap();
     assert_eq!(ref_obj.value(), "Hello, World!");
-    let obj = petty_obj.cast::<String>().unwrap();
+    let obj = petty_obj.downcast::<String>().unwrap();
     assert_eq!(obj.value(), "Hello, World!");
 }
 
 #[test]
 fn test_value_obj_casts() {
     let petty_obj = Obj::new(10 * 2 + 3).cast_petty();
-    let ref_obj = petty_obj.cast_ref::<i64>().unwrap();
+    let ref_obj = petty_obj.downcast_ref::<i64>().unwrap();
     assert_eq!(*ref_obj.value(), 10 * 2 + 3);
-    let obj = petty_obj.cast::<i64>().unwrap();
+    let obj = petty_obj.downcast::<i64>().unwrap();
     assert_eq!(*obj.value(), 10 * 2 + 3);
 }
 
@@ -45,7 +45,7 @@ struct Deleter(*mut bool);
 
 impl CanObj for Deleter {
     unsafe fn delete(obj: &Obj<PtyPtr>) {
-        let this = obj.cast_ref::<Self>().unwrap();
+        let this = obj.downcast_ref::<Self>().unwrap();
         let value = this.value();
         *value.0 = !*value.0;
         // Safety: Deleter is not a ValueObj
