@@ -45,7 +45,7 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
         // Safety: This is safe as the caller must guarantee that this object was not created with a ValueType
         // and that this function will only ever be called once.
         unsafe {
-            dealloc(obj.downcast_ref_unchecked::<Self>().value.assume_init());
+            dealloc(obj.value.assume_init().cast::<Self>());
             dealloc(obj.ref_count.unwrap());
         };
     }

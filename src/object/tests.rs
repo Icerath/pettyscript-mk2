@@ -1,3 +1,5 @@
+use std::{cell::Cell, rc::Rc};
+
 use super::*;
 
 #[test]
@@ -20,44 +22,43 @@ fn test_value_obj_casts() {
 
 /// tests that objects are dropped proplery
 #[derive(Debug)]
-struct Dropper(*mut bool);
+struct Dropper(Rc<Cell<bool>>);
 impl Drop for Dropper {
     fn drop(&mut self) {
-        // Safety: Dropper's pointer if valid.
-        unsafe { *self.0 = !*self.0 };
+        self.0.set(!self.0.get());
     }
 }
 impl CanObj for Dropper {}
 #[test]
 fn test_drop() {
-    let mut is_dropped = false;
-    Dropper(&mut is_dropped);
-    assert!(is_dropped);
-    Obj::new(Dropper(&mut is_dropped));
-    assert!(!is_dropped);
-    Obj::new(Dropper(&mut is_dropped)).cast_petty();
-    assert!(is_dropped);
+    let is_dropped = Rc::new(Cell::new(false));
+    Dropper(is_dropped.clone());
+    assert!(is_dropped.get());
+    Obj::new(Dropper(is_dropped.clone()));
+    assert!(!is_dropped.get());
+    Obj::new(Dropper(is_dropped.clone())).cast_petty();
+    assert!(is_dropped.get());
 }
 
 /// tests that objects are deleted proplery
 #[derive(Debug)]
-struct Deleter(*mut bool);
+struct Deleter(Rc<Cell<bool>>);
 
 impl CanObj for Deleter {
     unsafe fn delete(obj: &Obj<PtyPtr>) {
         let this = obj.downcast_ref::<Self>().unwrap();
         let value = this.value();
-        *value.0 = !*value.0;
-        // Safety: Deleter is not a ValueObj
+        value.0.set(!value.0.get());
+        // Safety: this is the default implementation.
         unsafe {
-            dealloc(this.value.assume_init());
-            dealloc(this.ref_count.unwrap());
+            dealloc(obj.value.assume_init().cast::<Self>());
+            dealloc(obj.ref_count.unwrap());
         };
     }
 }
 #[test]
 fn test_deletion() {
-    let mut is_deleted = false;
-    Obj::new(Deleter(std::ptr::addr_of_mut!(is_deleted)));
-    assert!(is_deleted);
+    let is_deleted = Rc::new(Cell::new(false));
+    Obj::new(Deleter(is_deleted.clone()));
+    assert!(is_deleted.get());
 }

@@ -4,7 +4,6 @@ pub use crate::object::*;
 pub use crate::vm::Vm;
 pub use core::fmt;
 pub use std::ptr::NonNull;
-pub use std::rc::Rc;
 
 #[inline]
 pub fn alloc<T: fmt::Debug>(val: T) -> NonNull<T> {
