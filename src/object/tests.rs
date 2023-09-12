@@ -2,11 +2,11 @@ use super::*;
 
 #[test]
 fn test_obj_casts() {
-    let petty_obj = Obj::new(String::from("Hello, World!")).cast_petty();
-    let ref_obj = petty_obj.downcast_ref::<String>().unwrap();
-    assert_eq!(ref_obj.value(), "Hello, World!");
-    let obj = petty_obj.downcast::<String>().unwrap();
-    assert_eq!(obj.value(), "Hello, World!");
+    let petty_obj = Obj::new(String::from("Hello, World!").into_boxed_str()).cast_petty();
+    let ref_obj = petty_obj.downcast_ref::<Box<str>>().unwrap();
+    assert_eq!(ref_obj.value().as_ref(), "Hello, World!");
+    let obj = petty_obj.downcast::<Box<str>>().unwrap();
+    assert_eq!(obj.value().as_ref(), "Hello, World!");
 }
 
 #[test]

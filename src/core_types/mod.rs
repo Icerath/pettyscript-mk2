@@ -13,5 +13,4 @@ impl fmt::Debug for Null {
         f.debug_struct("Null").finish()
     }
 }
-
-impl CanObj for String {}
+impl CanObj for Box<str> {}
