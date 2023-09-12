@@ -114,32 +114,36 @@ impl ObjImpl<PtyPtr> for Obj<PtyPtr> {
 }
 
 impl<T: CanObj> Obj<T> {
+    /// Casts `Obj<T>` into a Obj<PtyPtr>
+    /// This is just a transmute and does not mutate the object in any way.
     pub fn cast_petty(self) -> Obj<PtyPtr> {
         // Safety: Casting into a PtyPtr is always safe.
         unsafe { mem::transmute(self) }
     }
+    /// Casts `&Obj<T>` into a &Obj<PtyPtr>
+    /// This is just a `ptr::cast` and does not mutate the object in any way.
     pub fn cast_petty_ref(&self) -> &Obj<PtyPtr> {
         // Safety: Casting into a PtyPtr is always safe.
         unsafe { &*std::ptr::from_ref(self).cast() }
     }
+    /// Helper method to call this objects `get_item`.
     pub fn get_item(&self, vm: &mut Vm, key: &str) -> Obj<PtyPtr> {
         T::get_item(vm, self.cast_petty_ref(), key)
     }
+    /// Returns true if this `Obj` was created with a `ValueObj`.
+    /// It knows this by checking if the reference count was null.
     pub fn is_value(&self) -> bool {
         self.ref_count.is_none()
     }
+    /// Returns the reference count behind the `Obj`.
+    /// `Obj`s that were created with a `ValueObj` don't have a reference count.
     pub fn ref_count(&self) -> Option<&usize> {
         // Safety: This ref count should always be valid
         unsafe { self.ref_count.map(|ptr| ptr.as_ref()) }
     }
+    /// Returns `true` if `self` was created with the same type `U`.
     pub fn is_type<U: CanObj>(&self) -> bool {
         std::ptr::from_ref(self.vtable) == std::ptr::from_ref(U::VTABLE)
-    }
-}
-
-impl<T: CanObj> fmt::Display for Obj<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
     }
 }
 
@@ -163,7 +167,6 @@ impl<T: CanObj> Drop for Obj<T> {
         let Some(ref_count) = self.ref_count else {
             return;
         };
-        // Safety:
         unsafe {
             if *ref_count.as_ptr() == 1 {
                 T::delete(self.cast_petty_ref());
@@ -174,7 +177,6 @@ impl<T: CanObj> Drop for Obj<T> {
     }
 }
 
-#[allow(clippy::missing_fields_in_debug)]
 impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Obj")
