@@ -189,9 +189,3 @@ impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
             .finish()
     }
 }
-
-pub const fn type_id<T: CanObj + 'static>() -> usize {
-    // Safety: This is not safe or valid at all.
-    // from my understanding it is pretty likely that
-    unsafe { mem::transmute::<_, u128>(std::any::TypeId::of::<T>()) as usize }
-}
