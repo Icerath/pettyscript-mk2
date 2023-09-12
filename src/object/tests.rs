@@ -23,6 +23,7 @@ fn test_value_obj_casts() {
 struct Dropper(*mut bool);
 impl Drop for Dropper {
     fn drop(&mut self) {
+        // Safety: Dropper's pointer if valid.
         unsafe { *self.0 = !*self.0 };
     }
 }
@@ -43,13 +44,15 @@ fn test_drop() {
 struct Deleter(*mut bool);
 
 impl CanObj for Deleter {
-    fn delete(obj: &Obj<PtyPtr>) {
+    unsafe fn delete(obj: &Obj<PtyPtr>) {
+        let this = obj.cast_ref::<Self>().unwrap();
+        let value = this.value();
+        *value.0 = !*value.0;
+        // Safety: Deleter is not a ValueObj
         unsafe {
-            let this = obj.clone().cast_unchecked::<Self>();
-            let value = this.value();
-            *value.0 = !*value.0;
             dealloc(this.value.assume_init());
-        }
+            dealloc(this.ref_count.unwrap());
+        };
     }
 }
 #[test]

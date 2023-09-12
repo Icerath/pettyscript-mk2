@@ -14,7 +14,7 @@ impl CanObj for PtyPtr {
     fn call(vm: &mut Vm, obj: &Obj<PtyPtr>) -> Obj<PtyPtr> {
         ((obj.vtable).call)(vm, obj)
     }
-    fn delete(obj: &Obj<PtyPtr>) {
+    unsafe fn delete(obj: &Obj<PtyPtr>) {
         (obj.vtable.delete)(obj);
     }
 }
@@ -24,12 +24,14 @@ impl Obj<PtyPtr> {
         if type_id::<T>() != self.type_id {
             return None;
         }
+        // Safety: We just checked that this was created with T.
         Some(unsafe { self.cast_unchecked() })
     }
     pub fn cast_ref<T: CanObj>(&self) -> Option<&Obj<T>> {
         if type_id::<T>() != self.type_id {
             return None;
         }
+        // Safety: We just checked that this was created with T.
         unsafe { Some(self.cast_ref_unchecked()) }
     }
     /// # Safety

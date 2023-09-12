@@ -1,5 +1,6 @@
-use crate::prelude::*;
+#![allow(clippy::undocumented_unsafe_blocks)]
 
+use crate::prelude::*;
 impl CanObj for i64 {}
 unsafe impl ValueObj for i64 {}
 

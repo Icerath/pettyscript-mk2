@@ -5,7 +5,7 @@ pub struct Vtable {
     pub get_item: fn(&mut Vm, &Obj<PtyPtr>, &str) -> Obj<PtyPtr>,
     pub set_item: fn(&mut Vm, &Obj<PtyPtr>, &str, &Obj<PtyPtr>),
     pub call: fn(&mut Vm, &Obj<PtyPtr>) -> Obj<PtyPtr>,
-    pub delete: fn(&Obj<PtyPtr>),
+    pub delete: unsafe fn(&Obj<PtyPtr>),
 }
 
 impl Vtable {

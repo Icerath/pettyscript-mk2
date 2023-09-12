@@ -7,7 +7,7 @@ mod tests;
 use crate::prelude::*;
 use core::ptr::NonNull;
 pub use ptyptr::PtyPtr;
-use std::mem::MaybeUninit;
+use std::mem::{self, MaybeUninit};
 use vtable::Vtable;
 
 #[repr(C)]
@@ -16,6 +16,13 @@ pub struct Obj<T: CanObj> {
     value: MaybeUninit<NonNull<T>>,
     ref_count: Option<NonNull<usize>>,
     vtable: &'static Vtable,
+}
+
+impl<T: CanObj> Obj<T> {
+    pub fn ref_count(&self) -> Option<&usize> {
+        // Safety: This ref count should always be valid
+        unsafe { self.ref_count.map(|ptr| ptr.as_ref()) }
+    }
 }
 
 pub trait CanObj: fmt::Debug + Sized + 'static {
@@ -30,8 +37,23 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
         vm.raise_not_implemented();
         Obj::new(Null).cast_petty()
     }
-    fn delete(obj: &Obj<PtyPtr>) {
-        unsafe { dealloc(obj.cast_ref_unchecked::<Self>().value.assume_init()) };
+    /// # Safety
+    /// This function must only ever be called once and it is guaranteed to be called
+    /// when `Obj::ref_count == 0`
+    ///
+    /// This means you must prevent an object's `ref_count` from hitting 0 if you want to call this.
+    ///
+    /// This function also maybe not be called `where T: ValueType`
+    /// Or if this is an `Obj<PtyPtr>` that was created using a `ValueType`
+    ///
+    /// It is also very dangerous to call `Obj::clone` inside this method.
+    unsafe fn delete(obj: &Obj<PtyPtr>) {
+        // Safety: This is safe as the caller must guarantee that this object was not created with a ValueType
+        // and that this function will only ever be called once.
+        unsafe {
+            dealloc(obj.cast_ref_unchecked::<Self>().value.assume_init());
+            dealloc(obj.ref_count.unwrap());
+        };
     }
 }
 
@@ -68,13 +90,15 @@ impl<T: CanObj> ObjImpl<T> for Obj<T> {
         }
     }
     default fn value(&self) -> &T {
+        // Safety: This function is only called for non-value types
         unsafe { self.value.assume_init().as_ref() }
     }
 }
 
 impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
     fn new(value: T) -> Self {
-        let value = unsafe { std::mem::transmute_copy(&value) };
+        // Safety: It is up to implementors of the ValueObj trait to guarantee that this is safe.
+        let value = unsafe { mem::transmute_copy(&value) };
         let ref_count = None;
         let vtable = &Vtable::new::<T>();
         let type_id = type_id::<T>();
@@ -87,7 +111,7 @@ impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
         }
     }
     fn value(&self) -> &T {
-        // This is safe as this is only being called where T: ValueObj
+        // Safety: This is safe as this is only being called where T: ValueObj
         // which guarantees that self.value was created from T
         unsafe { &*std::ptr::addr_of!(self.value).cast::<T>() }
     }
@@ -101,10 +125,12 @@ impl ObjImpl<PtyPtr> for Obj<PtyPtr> {
 
 impl<T: CanObj> Obj<T> {
     pub fn cast_petty(self) -> Obj<PtyPtr> {
-        unsafe { std::mem::transmute(self) }
+        // Safety: Casting into a PtyPtr is always safe.
+        unsafe { mem::transmute(self) }
     }
     pub fn cast_petty_ref(&self) -> &Obj<PtyPtr> {
-        unsafe { &*(self as *const Obj<T>).cast() }
+        // Safety: Casting into a PtyPtr is always safe.
+        unsafe { &*std::ptr::from_ref(self).cast() }
     }
     pub fn get_item(&self, vm: &mut Vm, key: &str) -> Obj<PtyPtr> {
         T::get_item(vm, self.cast_petty_ref(), key)
@@ -116,18 +142,18 @@ impl<T: CanObj> Obj<T> {
 
 impl<T: CanObj> fmt::Display for Obj<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        unsafe {
-            f.debug_struct("Obj")
-                .field("type_id", &self.type_id)
-                .field("ref_count", &self.ref_count.map(|ptr| ptr.as_ref()))
-                .finish()
-        }
+        f.debug_struct("Obj")
+            .field("type_id", &self.type_id)
+            .field("ref_count", &self.ref_count())
+            .finish()
     }
 }
 
 impl<T: CanObj> Clone for Obj<T> {
     fn clone(&self) -> Self {
         if let Some(ref_count) = self.ref_count {
+            // Safety: We already checked that this is not a ValueObj
+            // so if this object exists ref_count should be valid.
             unsafe { *ref_count.as_ptr() += 1 };
         }
         Self {
@@ -144,10 +170,10 @@ impl<T: CanObj> Drop for Obj<T> {
         let Some(ref_count) = self.ref_count else {
             return;
         };
+        // Safety:
         unsafe {
             if *ref_count.as_ptr() == 1 {
                 T::delete(self.cast_petty_ref());
-                dealloc(ref_count);
             } else {
                 *ref_count.as_ptr() -= 1;
             }
@@ -172,13 +198,13 @@ impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
         f.debug_struct("Obj")
             .field("type_id", &self.type_id)
             .field("value", self.value())
-            .field("ref_count", unsafe {
-                &self.ref_count.map(|ptr| ptr.as_ref())
-            })
+            .field("ref_count", &self.ref_count())
             .finish()
     }
 }
 
-pub fn type_id<T: CanObj + 'static>() -> usize {
-    (unsafe { std::mem::transmute::<_, u128>(std::any::TypeId::of::<T>()) } as usize)
+pub const fn type_id<T: CanObj + 'static>() -> usize {
+    // Safety: This is not safe or valid at all.
+    // from my understanding it is pretty likely that
+    unsafe { mem::transmute::<_, u128>(std::any::TypeId::of::<T>()) as usize }
 }
