@@ -181,7 +181,7 @@ impl<T: CanObj> Drop for Obj<T> {
     }
 }
 
-impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
+impl<T: CanObj> fmt::Debug for Obj<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Obj")
             .field("value", self.value())
