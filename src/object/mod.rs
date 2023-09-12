@@ -139,9 +139,7 @@ impl<T: CanObj> Obj<T> {
 
 impl<T: CanObj> fmt::Display for Obj<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Obj")
-            .field("ref_count", &self.ref_count())
-            .finish()
+        fmt::Debug::fmt(self, f)
     }
 }
 
@@ -175,17 +173,6 @@ impl<T: CanObj> Drop for Obj<T> {
         }
     }
 }
-
-// #[allow(clippy::missing_fields_in_debug)]
-// impl<T: CanObj> fmt::Debug for Obj<T> {
-//     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         f.debug_struct("Obj")
-//             .field("type_id", &self.type_id)
-//             .field("value", &"")
-//             .field("ref_count", unsafe { self.ref_count.as_ref() })
-//             .finish()
-//     }
-// }
 
 #[allow(clippy::missing_fields_in_debug)]
 impl<T: CanObj + fmt::Debug> fmt::Debug for Obj<T> {
