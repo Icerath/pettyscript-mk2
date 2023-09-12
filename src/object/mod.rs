@@ -17,16 +17,6 @@ pub struct Obj<T: CanObj> {
     vtable: &'static Vtable,
 }
 
-impl<T: CanObj> Obj<T> {
-    pub fn ref_count(&self) -> Option<&usize> {
-        // Safety: This ref count should always be valid
-        unsafe { self.ref_count.map(|ptr| ptr.as_ref()) }
-    }
-    pub fn is_type<U: CanObj>(&self) -> bool {
-        dbg!(std::ptr::from_ref(self.vtable)) == dbg!(std::ptr::from_ref(U::VTABLE))
-    }
-}
-
 pub trait CanObj: fmt::Debug + Sized + 'static {
     // This can't be edited as the Vtable struct is private.
     const VTABLE: &'static Vtable = Vtable::new::<Self>();
@@ -137,6 +127,13 @@ impl<T: CanObj> Obj<T> {
     }
     pub fn is_value(&self) -> bool {
         self.ref_count.is_none()
+    }
+    pub fn ref_count(&self) -> Option<&usize> {
+        // Safety: This ref count should always be valid
+        unsafe { self.ref_count.map(|ptr| ptr.as_ref()) }
+    }
+    pub fn is_type<U: CanObj>(&self) -> bool {
+        dbg!(std::ptr::from_ref(self.vtable)) == dbg!(std::ptr::from_ref(U::VTABLE))
     }
 }
 
