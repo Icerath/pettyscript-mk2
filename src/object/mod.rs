@@ -40,7 +40,7 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
     /// This function also maybe not be called `where T: ValueType`
     /// Or if this is an `Obj<PtyPtr>` that was created using a `ValueType`
     ///
-    /// It is also very dangerous to call `Obj::clone` inside this method.
+    /// It is also very dangerous to call `Obj::clone` inside this method as that could call this delete function again.
     unsafe fn delete(obj: &Obj<PtyPtr>) {
         // Safety: This is safe as the caller must guarantee that this object was not created with a ValueType
         // and that this function will only ever be called once.
@@ -167,11 +167,15 @@ impl<T: CanObj> Drop for Obj<T> {
         let Some(ref_count) = self.ref_count else {
             return;
         };
+        // Safety:
+        // When this type is cloned ref_count is incremented and
+        // when this type is dropped ref_count is decremented.
+        // This means that when ref_count hits 0 there are no more
+        // instances of Obj and it is safe to call delete.
         unsafe {
-            if *ref_count.as_ptr() == 1 {
+            *ref_count.as_ptr() -= 1;
+            if *ref_count.as_ptr() == 0 {
                 T::delete(self.cast_petty_ref());
-            } else {
-                *ref_count.as_ptr() -= 1;
             }
         }
     }
