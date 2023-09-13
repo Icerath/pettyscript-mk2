@@ -3,7 +3,7 @@ use std::{cell::Cell, rc::Rc};
 
 #[test]
 fn test_obj_casts() {
-    let petty_obj = Obj::new(String::from("Hello, World!").into_boxed_str()).cast_petty();
+    let petty_obj = Obj::from(String::from("Hello, World!").into_boxed_str());
     let ref_obj = petty_obj.downcast_ref::<Box<str>>().unwrap();
     assert_eq!(ref_obj.value().as_ref(), "Hello, World!");
     let obj = petty_obj.downcast::<Box<str>>().unwrap();
@@ -12,7 +12,7 @@ fn test_obj_casts() {
 
 #[test]
 fn test_value_obj_casts() {
-    let petty_obj = Obj::new(10 * 2 + 3).cast_petty();
+    let petty_obj = Obj::from(10 * 2 + 3);
     let ref_obj = petty_obj.downcast_ref::<i64>().unwrap();
     assert_eq!(*ref_obj.value(), 10 * 2 + 3);
     let obj = petty_obj.downcast::<i64>().unwrap();
@@ -21,7 +21,7 @@ fn test_value_obj_casts() {
 
 #[test]
 fn test_zero_obj_casts() {
-    let petty_obj = Obj::new(Null).cast_petty();
+    let petty_obj = Obj::from(Null);
     assert!(petty_obj.downcast_ref::<Null>().is_some());
 }
 

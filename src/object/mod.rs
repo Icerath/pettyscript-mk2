@@ -174,7 +174,7 @@ impl<T: CanObj> Obj<T> {
 }
 
 impl<T: CanObj> From<T> for Obj<PtyPtr> {
-    default fn from(value: T) -> Self {
+    fn from(value: T) -> Self {
         Obj::new(value).cast_petty()
     }
 }
