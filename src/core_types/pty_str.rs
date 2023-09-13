@@ -49,6 +49,6 @@ fn test_pty_str() {
 
     let added: Obj<PtyStr> = PtyPtr::__add__(&literal, &owned).downcast().unwrap();
     assert_eq!(added.value(), "Hello, World!");
-    // let multiplied: Obj<PtyStr> = PtyPtr::__mul__(&literal, &Obj::from(3)).downcast().unwrap();
-    // assert_eq!(multiplied.value(), &"Hello, World!".repeat(3));
+    let multiplied = PtyPtr::__mul__(added.cast_petty_ref(), &Obj::from(3)).downcast::<PtyStr>();
+    assert_eq!(multiplied.unwrap().value(), &"Hello, World!".repeat(3));
 }

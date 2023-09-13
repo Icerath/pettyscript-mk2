@@ -20,6 +20,15 @@ impl CanObj for PtyPtr {
     fn __add__(lhs: &Obj<PtyPtr>, rhs: &Obj<PtyPtr>) -> Obj<PtyPtr> {
         (lhs.vtable.__add__)(lhs, rhs)
     }
+    fn __sub__(lhs: &Obj<PtyPtr>, rhs: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        (lhs.vtable.__sub__)(lhs, rhs)
+    }
+    fn __mul__(lhs: &Obj<PtyPtr>, rhs: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        (lhs.vtable.__mul__)(lhs, rhs)
+    }
+    fn __div__(lhs: &Obj<PtyPtr>, rhs: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        (lhs.vtable.__div__)(lhs, rhs)
+    }
 }
 
 impl Obj<PtyPtr> {
