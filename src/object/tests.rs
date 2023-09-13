@@ -3,11 +3,11 @@ use std::{cell::Cell, rc::Rc};
 
 #[test]
 fn test_obj_casts() {
-    let petty_obj = Obj::from(String::from("Hello, World!").into_boxed_str());
-    let ref_obj = petty_obj.downcast_ref::<Box<str>>().unwrap();
-    assert_eq!(ref_obj.value().as_ref(), "Hello, World!");
-    let obj = petty_obj.downcast::<Box<str>>().unwrap();
-    assert_eq!(obj.value().as_ref(), "Hello, World!");
+    let petty_obj = Obj::from("Hello, World!");
+    let ref_obj = petty_obj.downcast_ref::<PtyStr>().unwrap();
+    assert_eq!(ref_obj.value(), "Hello, World!");
+    let obj = petty_obj.downcast::<PtyStr>().unwrap();
+    assert_eq!(obj.value(), "Hello, World!");
 }
 
 #[test]
