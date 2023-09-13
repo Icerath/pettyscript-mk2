@@ -49,14 +49,30 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
             dealloc(obj.ref_count.unwrap());
         };
     }
+
+    fn __add__(_: &Obj<PtyPtr>, _: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        todo!()
+    }
+    fn __sub__(_: &Obj<PtyPtr>, _: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        todo!()
+    }
+    fn __mul__(_: &Obj<PtyPtr>, _: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        todo!()
+    }
+    fn __div__(_: &Obj<PtyPtr>, _: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        todo!()
+    }
 }
 
 /// Types that implement this trait are stored inside the value ptr instead of being heap allocated.
 /// This also avoids the need for the `ref_count` meaning that creating an
 /// `Obj<T> where T: ValueObj` has 0 allocations.
 /// # Safety
-/// Types that implement `ValueObj` must be pointer sized.
-pub unsafe trait ValueObj: Copy {}
+/// Types that implement `ValueObj` must be pointer sized or also implement `ZeroObj`.
+pub unsafe trait ValueObj: CanObj + Copy {}
+/// # Safety
+/// Types that implement this trait must be zero sized types.
+pub unsafe trait ZeroObj: ValueObj {}
 
 pub trait ObjImpl<T>: private::Seal {
     fn new(value: T) -> Self;
@@ -72,13 +88,10 @@ mod private {
 
 impl<T: CanObj> ObjImpl<T> for Obj<T> {
     default fn new(value: T) -> Self {
-        let value = MaybeUninit::new(alloc(value));
-        let ref_count = Some(alloc(1));
-        let vtable = T::VTABLE;
         Self {
-            value,
-            ref_count,
-            vtable,
+            value: MaybeUninit::new(alloc(value)),
+            ref_count: Some(alloc(1)),
+            vtable: T::VTABLE,
         }
     }
     default fn value(&self) -> &T {
@@ -87,23 +100,33 @@ impl<T: CanObj> ObjImpl<T> for Obj<T> {
     }
 }
 
-impl<T: CanObj + ValueObj> ObjImpl<T> for Obj<T> {
-    fn new(value: T) -> Self {
-        // Safety: It is up to implementors of the ValueObj trait to guarantee that this is safe.
-        let value = unsafe { mem::transmute_copy(&value) };
-        let ref_count = None;
-        let vtable = T::VTABLE;
-
+impl<T: ValueObj> ObjImpl<T> for Obj<T> {
+    default fn new(value: T) -> Self {
         Self {
-            value,
-            ref_count,
-            vtable,
+            // Safety: It is up to implementors of the ValueObj trait to guarantee that this is safe.
+            value: unsafe { mem::transmute_copy(&value) },
+            ref_count: None,
+            vtable: T::VTABLE,
         }
     }
-    fn value(&self) -> &T {
+    default fn value(&self) -> &T {
         // Safety: This is safe as this is only being called where T: ValueObj
         // which guarantees that self.value was created from T
         unsafe { &*std::ptr::addr_of!(self.value).cast::<T>() }
+    }
+}
+
+impl<T: ZeroObj> ObjImpl<T> for Obj<T> {
+    fn new(_: T) -> Self {
+        Self {
+            value: MaybeUninit::uninit(),
+            ref_count: None,
+            vtable: T::VTABLE,
+        }
+    }
+    fn value(&self) -> &T {
+        // Safety: ZST are allowed to be dangling
+        unsafe { std::ptr::NonNull::dangling().as_ref() }
     }
 }
 

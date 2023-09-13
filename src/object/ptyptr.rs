@@ -17,6 +17,9 @@ impl CanObj for PtyPtr {
     unsafe fn delete(obj: &Obj<PtyPtr>) {
         (obj.vtable.delete)(obj);
     }
+    fn __add__(lhs: &Obj<PtyPtr>, rhs: &Obj<PtyPtr>) -> Obj<PtyPtr> {
+        (lhs.vtable.__add__)(lhs, rhs)
+    }
 }
 
 impl Obj<PtyPtr> {

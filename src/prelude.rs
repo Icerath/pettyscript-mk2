@@ -3,7 +3,7 @@ pub use crate::core_types::*;
 pub use crate::object::*;
 pub use crate::vm::Vm;
 pub use core::fmt;
-pub use std::ptr::NonNull;
+use std::ptr::NonNull;
 
 #[inline]
 pub fn alloc<T: fmt::Debug>(val: T) -> NonNull<T> {

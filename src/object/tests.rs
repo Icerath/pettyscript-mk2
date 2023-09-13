@@ -1,6 +1,5 @@
-use std::{cell::Cell, rc::Rc};
-
 use super::*;
+use std::{cell::Cell, rc::Rc};
 
 #[test]
 fn test_obj_casts() {
@@ -18,6 +17,12 @@ fn test_value_obj_casts() {
     assert_eq!(*ref_obj.value(), 10 * 2 + 3);
     let obj = petty_obj.downcast::<i64>().unwrap();
     assert_eq!(*obj.value(), 10 * 2 + 3);
+}
+
+#[test]
+fn test_zero_obj_casts() {
+    let petty_obj = Obj::new(Null).cast_petty();
+    assert!(petty_obj.downcast_ref::<Null>().is_some());
 }
 
 /// tests that objects are dropped proplery
