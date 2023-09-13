@@ -131,6 +131,9 @@ impl<T: ZeroObj> ObjImpl<T> for Obj<T> {
 }
 
 impl ObjImpl<PtyPtr> for Obj<PtyPtr> {
+    fn new(_: PtyPtr) -> Self {
+        Obj::from(Null)
+    }
     fn value(&self) -> &PtyPtr {
         &PtyPtr
     }
@@ -167,6 +170,12 @@ impl<T: CanObj> Obj<T> {
     /// Returns `true` if `self` was created with the same type `U`.
     pub fn is_type<U: CanObj>(&self) -> bool {
         std::ptr::from_ref(self.vtable) == std::ptr::from_ref(U::VTABLE)
+    }
+}
+
+impl<T: CanObj> From<T> for Obj<PtyPtr> {
+    default fn from(value: T) -> Self {
+        Obj::new(value).cast_petty()
     }
 }
 
