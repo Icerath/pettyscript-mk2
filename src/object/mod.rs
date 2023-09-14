@@ -7,7 +7,7 @@ mod tests;
 use crate::prelude::*;
 use core::ptr::NonNull;
 pub use ptyptr::PtyPtr;
-use std::mem::{self, MaybeUninit};
+use std::mem::MaybeUninit;
 use vtable::Vtable;
 
 #[repr(C)]
@@ -20,6 +20,7 @@ pub struct Obj<T: CanObj> {
 pub trait CanObj: fmt::Debug + Sized + 'static {
     // This can't be edited as the Vtable struct is private.
     const VTABLE: &'static Vtable = Vtable::new::<Self>();
+
     fn get_item(vm: &mut Vm, _obj: &Obj<PtyPtr>, _key: &str) -> Obj<PtyPtr> {
         vm.raise_not_implemented();
         Obj::new(Null).cast_petty()
@@ -46,7 +47,7 @@ pub trait CanObj: fmt::Debug + Sized + 'static {
         // and that this function will only ever be called once.
         unsafe {
             dealloc(obj.value.assume_init().cast::<Self>());
-            dealloc(obj.ref_count.unwrap());
+            dealloc(obj.ref_count.unwrap_unchecked());
         };
     }
 
@@ -104,7 +105,7 @@ impl<T: ValueObj> ObjImpl<T> for Obj<T> {
     default fn new(value: T) -> Self {
         Self {
             // Safety: It is up to implementors of the ValueObj trait to guarantee that this is safe.
-            value: unsafe { mem::transmute_copy(&value) },
+            value: unsafe { std::mem::transmute_copy(&value) },
             ref_count: None,
             vtable: T::VTABLE,
         }
@@ -144,7 +145,7 @@ impl<T: CanObj> Obj<T> {
     /// This is just a transmute and does not mutate the object in any way.
     pub fn cast_petty(self) -> Obj<PtyPtr> {
         // Safety: Casting into a PtyPtr is always safe.
-        unsafe { mem::transmute(self) }
+        unsafe { std::mem::transmute(self) }
     }
     /// Casts `&Obj<T>` into a &Obj<PtyPtr>
     /// This is just a `ptr::cast` and does not mutate the object in any way.
@@ -169,7 +170,7 @@ impl<T: CanObj> Obj<T> {
     }
     /// Returns `true` if `self` was created with the same type `U`.
     pub fn is_type<U: CanObj>(&self) -> bool {
-        std::ptr::from_ref(self.vtable) == std::ptr::from_ref(U::VTABLE)
+        std::ptr::from_ref(self.vtable) == U::VTABLE
     }
 }
 
@@ -186,11 +187,9 @@ impl<T: CanObj> Clone for Obj<T> {
             // so if this object exists ref_count should be valid.
             unsafe { *ref_count.as_ptr() += 1 };
         }
-        Self {
-            ref_count: self.ref_count,
-            value: self.value,
-            vtable: self.vtable,
-        }
+        // Safety: it is now safe to do a bit copy because we have incremented the ref count
+        // for when that copy is dropped.
+        unsafe { std::ptr::read(self) }
     }
 }
 

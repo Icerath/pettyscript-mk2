@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::mem::transmute;
 
 #[derive(Clone, Copy, Debug)]
 pub struct PtyPtr;
@@ -49,7 +48,7 @@ impl Obj<PtyPtr> {
     /// # Safety
     /// The caller must guarantee that this object was originally created using T
     pub unsafe fn downcast_unchecked<T: CanObj>(self) -> Obj<T> {
-        transmute(self)
+        std::mem::transmute(self)
     }
     /// # Safety
     /// The caller must guarantee that this object was originally created using T
