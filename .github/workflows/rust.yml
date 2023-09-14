@@ -21,4 +21,4 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Run miri tests
-      run: cargo miri test
+      run: rustup component add miri && cargo miri test
