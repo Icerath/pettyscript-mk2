@@ -11,5 +11,10 @@ pub enum Literal {
     Int(i64),
     Float(f64),
     String(Box<str>),
-    Array(Box<[Expr]>),
+}
+
+impl From<Literal> for Expr {
+    fn from(literal: Literal) -> Self {
+        Self::Literal(literal)
+    }
 }
