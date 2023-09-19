@@ -13,10 +13,7 @@ pub enum Literal {
     String(Box<str>),
 }
 
-impl<T> From<T> for Expr
-where
-    T: Into<Literal>,
-{
+impl<T: Into<Literal>> From<T> for Expr {
     fn from(value: T) -> Expr {
         Expr::Literal(value.into())
     }

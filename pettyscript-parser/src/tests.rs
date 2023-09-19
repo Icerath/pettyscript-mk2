@@ -40,4 +40,5 @@ fn test_literal_int() {
 #[test]
 fn test_list() {
     parse_eq!(" [ 1 , 2.5 , [ 2, ], ] ", list![1, 2.5, list![2]]);
+    parse_eq!(" [  ] ", list![]);
 }
