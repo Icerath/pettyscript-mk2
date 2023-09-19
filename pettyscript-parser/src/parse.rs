@@ -4,7 +4,6 @@ use crate::expr::{Expr, Literal};
 
 use winnow::ascii::{digit0, digit1};
 use winnow::combinator::opt;
-use winnow::error::{ErrMode, ErrorKind};
 use winnow::prelude::*;
 use winnow::{
     ascii::{dec_int, float},
@@ -44,11 +43,19 @@ fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
 
 fn literal<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Literal, E> {
     alt((
+        "null".value(Literal::Null),
+        literal_bool.map(Literal::Bool),
         literal_float.map(Literal::Float),
         literal_int.map(Literal::Int),
         literal_string.map(|string| Literal::String(Box::from(string))),
     ))
     .parse_next(input)
+}
+
+fn literal_bool<'a, E: RawErr<'a>>(input: &mut In<'a>) -> PResult<bool, E> {
+    alt(("true", "false"))
+        .map(|str| str == "true")
+        .parse_next(input)
 }
 
 fn literal_float<'a, E: RawErr<'a>>(input: &mut In<'a>) -> PResult<f64, E> {
