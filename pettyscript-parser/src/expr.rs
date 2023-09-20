@@ -4,7 +4,15 @@ pub enum Expr {
     Ident(Ident),
     List(Box<[Expr]>),
     Block(Block),
-    While { condition: Box<Expr>, block: Block },
+    While {
+        condition: Box<Expr>,
+        block: Block,
+    },
+    For {
+        ident: Ident,
+        iter: Box<Expr>,
+        block: Block,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

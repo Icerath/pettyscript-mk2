@@ -30,6 +30,7 @@ fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
     alt((
         block.map(Expr::Block),
         while_loop,
+        for_loop,
         list,
         literal.map(Expr::Literal),
         ident.map(Expr::Ident),
@@ -41,8 +42,10 @@ fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
     alt((
         block.map(Expr::Block),
         while_loop,
+        for_loop,
         terminated(list, (ws, ';')),
         terminated(literal.map(Expr::Literal), (ws, ';')),
+        terminated(ident.map(Expr::Ident), (ws, ';')),
     ))
     .parse_next(input)
 }
@@ -61,6 +64,7 @@ fn block<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Block, E> {
         ),
         '}'
     )
+    .context("block")
     .map(Block::from)
     .parse_next(input)
 }
@@ -73,6 +77,18 @@ fn while_loop<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         condition: Box::new(condition),
         block,
     })
+}
+
+fn for_loop<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    let _ = ("for", ws).parse_next(input)?;
+
+    let (ident, _in, iter, block) =
+        cut_err((ident, (ws, "in"), preceded(ws, expr), preceded(ws, block)))
+            .context("for loop")
+            .parse_next(input)?;
+    let iter = Box::new(iter);
+
+    Ok(Expr::For { ident, iter, block })
 }
 
 fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -149,8 +165,9 @@ fn character<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<char, E> {
     none_of('"').parse_next(input)
 }
 
-fn ident<'a, E: RawErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {
+fn ident<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {
     take_while(1.., |c| matches!(c, 'a'..='z'|'A'..='Z'|'_'))
+        .context("ident")
         .map(Ident::from)
         .parse_next(input)
 }

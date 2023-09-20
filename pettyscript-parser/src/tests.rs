@@ -20,10 +20,20 @@ macro_rules! block {
     };
 }
 
-macro_rules! while_loop {
+macro_rules! while_ {
     ($condition: expr => { $($expr: expr);* $(;)* } ) => {
         Expr::While {
             condition: Box::new($condition.into()),
+            block: block! { $($expr;)* },
+        }
+    };
+}
+
+macro_rules! for_ {
+    ($ident: ident in $iter: expr => { $($expr: expr);* $(;)* } ) => {
+        Expr::For {
+            ident: stringify!($ident).into(),
+            iter: $iter.into(),
             block: block! { $($expr;)* },
         }
     };
@@ -59,8 +69,8 @@ fn test_literal_str() {
 
 #[test]
 fn test_list() {
-    parse_eq!(" [ 1 , 2.5 , [ 2, ], ] ", list![1, 2.5, list![2]]);
     parse_eq!(" [  ] ", list![]);
+    parse_eq!(" [ 1 , 2.5 , [ 2 , ] , ] ", list![1, 2.5, list![2]]);
 }
 
 #[test]
@@ -71,11 +81,24 @@ fn test_parse_block() {
 
 #[test]
 fn test_while_loop() {
-    parse_eq!(r#" while true { }"#, while_loop! { true => {} });
+    parse_eq!(r#" while true { }"#, while_! { true => {} });
     parse_eq!(
         r#" while false { "hello"; 1; }"#,
-        while_loop! { false => { "hello"; 1; } }
+        while_! { false => { "hello"; 1; } }
     );
+}
+
+#[test]
+fn test_for_loop() {
+    parse_eq!(
+        r#" for i in [1, 2, 3] {}"#,
+        for_! { i in list![1, 2, 3] => {} }
+    );
+
+    // parse_eq!(
+    //     r#" for i in iter { 1; [2, 3]; }"#,
+    //     for_! { i in list![1, 2, 3] => {} }
+    // );
 }
 
 #[test]
