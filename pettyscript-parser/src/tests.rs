@@ -11,7 +11,7 @@ macro_rules! parse_eq {
 
 macro_rules! list {
     ($($expr: expr),*) => {
-        Expr::List(Box::from( [ $( $expr.into(), )* ])) };
+        Expr::List(vec![$( $expr.into(), )*].into_boxed_slice()) };
 }
 
 #[test]
