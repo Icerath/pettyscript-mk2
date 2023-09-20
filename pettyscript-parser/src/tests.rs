@@ -1,6 +1,6 @@
 use winnow::error::ContextError;
 
-use crate::expr::{Expr, Literal};
+use crate::expr::{Block, Expr, Literal};
 use crate::parse::parse;
 
 macro_rules! parse_eq {
@@ -16,8 +16,16 @@ macro_rules! list {
 
 macro_rules! block {
     ($($expr: expr);* $(;)*) => {
-        Expr::Block(vec![ $($expr.into(),)* ].into_boxed_slice())
+        Block(vec![ $($expr.into(),)* ].into_boxed_slice())
+    };
+}
 
+macro_rules! while_loop {
+    ($condition: expr => { $($expr: expr);* $(;)* } ) => {
+        Expr::While {
+            condition: Box::new($condition.into()),
+            block: block! { $($expr;)* },
+        }
     };
 }
 
@@ -57,6 +65,15 @@ fn test_list() {
 
 #[test]
 fn test_parse_block() {
-    parse_eq!(r#" { }"#, Expr::Block(vec![].into()),);
+    parse_eq!(r#" { }"#, block! {});
     parse_eq!(r#" { "hello"; 1; {} }"#, block! { "hello"; 1; block! {}; });
+}
+
+#[test]
+fn test_while_loop() {
+    parse_eq!(r#" while true { }"#, while_loop! { true => {} });
+    parse_eq!(
+        r#" while false { "hello"; 1; }"#,
+        while_loop! { false => { "hello"; 1; } }
+    );
 }

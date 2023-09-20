@@ -1,4 +1,4 @@
-use crate::expr::{Expr, Literal};
+use crate::expr::{Block, Expr, Literal};
 use std::fmt;
 use std::str::FromStr;
 use winnow::combinator::delimited;
@@ -28,7 +28,13 @@ pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
 }
 
 fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    alt((block.map(Expr::Block), list, literal.map(Expr::Literal))).parse_next(input)
+    alt((
+        block.map(Expr::Block),
+        while_loop,
+        list,
+        literal.map(Expr::Literal),
+    ))
+    .parse_next(input)
 }
 
 fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -40,7 +46,7 @@ fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
     .parse_next(input)
 }
 
-fn block<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Box<[Expr]>, E> {
+fn block<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Block, E> {
     cut_delimiter!(
         ('{', ws),
         fold_repeat(
@@ -54,8 +60,18 @@ fn block<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Box<[Expr]>, E> {
         ),
         '}'
     )
-    .map(Box::from)
+    .map(Block::from)
     .parse_next(input)
+}
+
+fn while_loop<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    let _ = "while".parse_next(input)?;
+    let condition = preceded(ws, expr).parse_next(input)?;
+    let block = preceded(ws, block).parse_next(input)?;
+    Ok(Expr::While {
+        condition: Box::new(condition),
+        block,
+    })
 }
 
 fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {

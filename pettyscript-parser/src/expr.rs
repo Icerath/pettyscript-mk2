@@ -2,7 +2,17 @@
 pub enum Expr {
     Literal(Literal),
     List(Box<[Expr]>),
-    Block(Box<[Expr]>),
+    Block(Block),
+    While { condition: Box<Expr>, block: Block },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Block(pub Box<[Expr]>);
+
+impl From<Vec<Expr>> for Block {
+    fn from(value: Vec<Expr>) -> Self {
+        Self(value.into())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -12,6 +22,12 @@ pub enum Literal {
     Int(i64),
     Float(f64),
     String(Box<str>),
+}
+
+impl From<Block> for Expr {
+    fn from(value: Block) -> Self {
+        Self::Block(value)
+    }
 }
 
 impl<T: Into<Literal>> From<T> for Expr {
