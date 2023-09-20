@@ -1,11 +1,11 @@
-use winnow::error::ErrorKind;
+use winnow::error::ContextError;
 
 use crate::expr::{Expr, Literal};
 use crate::parse::parse;
 
 macro_rules! parse_eq {
     ($str: expr, $cmp: expr) => {
-        assert_eq!(parse::<ErrorKind>($str), Ok(Expr::from($cmp)))
+        assert_eq!(parse::<ContextError<&str>>($str), Ok(Expr::from($cmp)))
     };
 }
 
