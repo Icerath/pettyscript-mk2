@@ -2,6 +2,7 @@
 pub enum Expr {
     Literal(Literal),
     List(Box<[Expr]>),
+    Block(Box<[Expr]>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

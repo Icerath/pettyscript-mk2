@@ -1,6 +1,7 @@
 use crate::expr::{Expr, Literal};
 use std::fmt;
 use std::str::FromStr;
+use winnow::combinator::delimited;
 use winnow::prelude::*;
 use winnow::{
     ascii::{digit0, digit1},
@@ -27,7 +28,34 @@ pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
 }
 
 fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    alt((list, literal.map(Expr::Literal))).parse_next(input)
+    alt((block.map(Expr::Block), list, literal.map(Expr::Literal))).parse_next(input)
+}
+
+fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    alt((
+        block.map(Expr::Block),
+        terminated(list, (ws, ';')),
+        terminated(literal.map(Expr::Literal), (ws, ';')),
+    ))
+    .parse_next(input)
+}
+
+fn block<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Box<[Expr]>, E> {
+    cut_delimiter!(
+        ('{', ws),
+        fold_repeat(
+            0..,
+            delimited(ws, statement, ws),
+            Vec::new,
+            |mut block, expr| {
+                block.push(expr);
+                block
+            }
+        ),
+        '}'
+    )
+    .map(Box::from)
+    .parse_next(input)
 }
 
 fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
