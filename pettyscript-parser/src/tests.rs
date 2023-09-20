@@ -95,10 +95,13 @@ fn test_for_loop() {
         for_! { i in list![1, 2, 3] => {} }
     );
 
-    // parse_eq!(
-    //     r#" for i in iter { 1; [2, 3]; }"#,
-    //     for_! { i in list![1, 2, 3] => {} }
-    // );
+    parse_eq!(
+        r#" for i in iter { 1; [2, 3]; }"#,
+        for_! { i in Expr::Ident("iter".into()) => {
+            1;
+            list![2, 3];
+        }}
+    );
 }
 
 #[test]
