@@ -40,3 +40,8 @@ impl From<String> for Literal {
         Self::String(value.into_boxed_str())
     }
 }
+impl From<&str> for Literal {
+    fn from(value: &str) -> Self {
+        Self::String(value.into())
+    }
+}

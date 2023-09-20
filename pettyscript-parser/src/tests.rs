@@ -33,8 +33,13 @@ fn test_literal_float() {
 
 #[test]
 fn test_literal_int() {
-    parse_eq!("1", Literal::Int(1));
-    parse_eq!("- 42", Literal::Int(-42));
+    parse_eq!("1", 1);
+    parse_eq!("- 42", -42);
+}
+
+#[test]
+fn test_literal_str() {
+    parse_eq!(r#" "Hello, World!" "#, "Hello, World!");
 }
 
 #[test]
