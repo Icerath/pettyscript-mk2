@@ -5,8 +5,8 @@ use winnow::prelude::*;
 use winnow::{
     ascii::{digit0, digit1},
     combinator::{alt, cut_err, opt},
-    combinator::{delimited, preceded, terminated},
     combinator::{fold_repeat, separated0},
+    combinator::{preceded, terminated},
     error::{AddContext, ParserError},
     token::{none_of, take_while},
 };
@@ -15,6 +15,12 @@ type In<'a> = &'a str;
 
 pub trait RawErr<'a> = ParserError<In<'a>>;
 pub trait CtxErr<'a> = RawErr<'a> + AddContext<In<'a>, &'static str>;
+
+macro_rules! cut_delimiter {
+    ($lhs: expr, $middle: expr, $rhs: expr $(,)?) => {
+        preceded($lhs, cut_err(terminated($middle, $rhs)))
+    };
+}
 
 pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
     preceded(ws, expr).parse_next(&mut input)
@@ -25,12 +31,10 @@ fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
 }
 
 fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    preceded(
+    cut_delimiter!(
         ('[', ws),
-        cut_err(terminated(
-            separated0(expr, (ws, ',', ws)),
-            (ws, opt((',', ws)), ']'),
-        )),
+        separated0(expr, (ws, ',', ws)),
+        (ws, opt((',', ws)), ']')
     )
     .map(|exprs: Vec<Expr>| Expr::List(Box::from(exprs)))
     .context("list")
@@ -84,13 +88,13 @@ where
 }
 
 fn literal_string<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<String, E> {
-    delimited(
+    cut_delimiter!(
         '"',
         fold_repeat(0.., character, String::new, |mut string, c| {
             string.push(c);
             string
         }),
-        '"',
+        '"'
     )
     .context("string")
     .parse_next(input)
