@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Literal(Literal),
+    Ident(Ident),
     List(Box<[Expr]>),
     Block(Block),
     While { condition: Box<Expr>, block: Block },
@@ -8,6 +9,15 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Block(pub Box<[Expr]>);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Ident(pub Box<str>);
+
+impl From<&str> for Ident {
+    fn from(value: &str) -> Self {
+        Self(value.into())
+    }
+}
 
 impl From<Vec<Expr>> for Block {
     fn from(value: Vec<Expr>) -> Self {

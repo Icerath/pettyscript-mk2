@@ -77,3 +77,8 @@ fn test_while_loop() {
         while_loop! { false => { "hello"; 1; } }
     );
 }
+
+#[test]
+fn test_ident() {
+    parse_eq!(r#" hello_world "#, Expr::Ident("hello_world".into()));
+}

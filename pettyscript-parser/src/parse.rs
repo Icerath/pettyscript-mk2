@@ -1,13 +1,12 @@
-use crate::expr::{Block, Expr, Literal};
+use crate::expr::{Block, Expr, Ident, Literal};
 use std::fmt;
 use std::str::FromStr;
-use winnow::combinator::delimited;
 use winnow::prelude::*;
 use winnow::{
     ascii::{digit0, digit1},
     combinator::{alt, cut_err, opt},
+    combinator::{delimited, preceded, terminated},
     combinator::{fold_repeat, separated0},
-    combinator::{preceded, terminated},
     error::{AddContext, ParserError},
     token::{none_of, take_while},
 };
@@ -33,6 +32,7 @@ fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         while_loop,
         list,
         literal.map(Expr::Literal),
+        ident.map(Expr::Ident),
     ))
     .parse_next(input)
 }
@@ -40,6 +40,7 @@ fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
 fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
     alt((
         block.map(Expr::Block),
+        while_loop,
         terminated(list, (ws, ';')),
         terminated(literal.map(Expr::Literal), (ws, ';')),
     ))
@@ -146,6 +147,12 @@ fn literal_string<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<String, E> {
 
 fn character<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<char, E> {
     none_of('"').parse_next(input)
+}
+
+fn ident<'a, E: RawErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {
+    take_while(1.., |c| matches!(c, 'a'..='z'|'A'..='Z'|'_'))
+        .map(Ident::from)
+        .parse_next(input)
 }
 
 fn ws<'a, E: RawErr<'a>>(input: &mut In<'a>) -> PResult<&'a str, E> {
