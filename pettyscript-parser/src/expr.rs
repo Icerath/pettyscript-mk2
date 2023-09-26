@@ -13,6 +13,26 @@ pub enum Expr {
         iter: Box<Expr>,
         block: Block,
     },
+    IfState(IfState),
+    Function {
+        name: Ident,
+        params: Box<[Ident]>,
+        body: Block,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IfState {
+    pub condition: Box<Expr>,
+    pub body: Block,
+    pub or_else: OrElse,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum OrElse {
+    IfState(Box<IfState>),
+    Block(Block),
+    None,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,6 +50,12 @@ impl From<&str> for Ident {
 impl From<Vec<Expr>> for Block {
     fn from(value: Vec<Expr>) -> Self {
         Self(value.into())
+    }
+}
+
+impl From<Ident> for Expr {
+    fn from(ident: Ident) -> Self {
+        Self::Ident(ident)
     }
 }
 

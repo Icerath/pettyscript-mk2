@@ -1,6 +1,7 @@
-use crate::expr::{Block, Expr, Ident, Literal};
+use crate::expr::{Block, Expr, Ident, IfState, Literal, OrElse};
 use std::fmt;
 use std::str::FromStr;
+use winnow::error::ErrMode;
 use winnow::prelude::*;
 use winnow::{
     ascii::{digit0, digit1},
@@ -13,7 +14,7 @@ use winnow::{
 
 type In<'a> = &'a str;
 
-pub trait RawErr<'a> = ParserError<In<'a>>;
+pub trait RawErr<'a> = ParserError<In<'a>> + fmt::Debug;
 pub trait CtxErr<'a> = RawErr<'a> + AddContext<In<'a>, &'static str>;
 
 macro_rules! cut_delimiter {
@@ -23,7 +24,7 @@ macro_rules! cut_delimiter {
 }
 
 pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
-    preceded(ws, expr).parse_next(&mut input)
+    preceded(ws, statement).parse_next(&mut input)
 }
 
 fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -31,6 +32,8 @@ fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         block.map(Expr::Block),
         while_loop,
         for_loop,
+        if_statement.map(Expr::IfState),
+        function_def,
         list,
         literal.map(Expr::Literal),
         ident.map(Expr::Ident),
@@ -43,9 +46,12 @@ fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         block.map(Expr::Block),
         while_loop,
         for_loop,
-        terminated(list, (ws, ';')),
-        terminated(literal.map(Expr::Literal), (ws, ';')),
-        terminated(ident.map(Expr::Ident), (ws, ';')),
+        if_statement.map(Expr::IfState),
+        function_def,
+        terminated(
+            alt((list, literal.map(Expr::Literal), ident.map(Expr::Ident))),
+            (ws, ';').context("semicolon"),
+        ),
     ))
     .parse_next(input)
 }
@@ -70,25 +76,71 @@ fn block<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Block, E> {
 }
 
 fn while_loop<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    let _ = "while".parse_next(input)?;
-    let condition = preceded(ws, expr).parse_next(input)?;
-    let block = preceded(ws, block).parse_next(input)?;
-    Ok(Expr::While {
-        condition: Box::new(condition),
-        block,
-    })
+    let _ = ("while").parse_next(input)?;
+    cut_err((preceded(ws, expr), preceded(ws, block)))
+        .context("while loop")
+        .parse_next(input)
+        .map(|(condition, block)| Expr::While {
+            condition: Box::new(condition),
+            block,
+        })
 }
 
 fn for_loop<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
     let _ = ("for", ws).parse_next(input)?;
+    cut_err((ident, preceded((ws, "in", ws), expr), preceded(ws, block)))
+        .context("for loop")
+        .parse_next(input)
+        .map(|(ident, iter, block)| Expr::For {
+            ident,
+            iter: Box::new(iter),
+            block,
+        })
+}
 
-    let (ident, _in, iter, block) =
-        cut_err((ident, (ws, "in"), preceded(ws, expr), preceded(ws, block)))
-            .context("for loop")
-            .parse_next(input)?;
-    let iter = Box::new(iter);
+fn if_statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<IfState, E> {
+    let (condition, body) = preceded("if", cut_err((delimited(ws, expr, ws), block)))
+        .context("if statement")
+        .parse_next(input)?;
 
-    Ok(Expr::For { ident, iter, block })
+    let or_else: Result<_, ErrMode<E>> = (ws, "else", ws).parse_next(input);
+
+    let or_else = match or_else {
+        Ok(_) => match if_statement::<E>(input) {
+            Ok(if_state) => OrElse::IfState(Box::new(if_state)),
+            Err(_) => OrElse::Block(block(input)?),
+        },
+        Err(_) => OrElse::None,
+    };
+
+    Ok(IfState {
+        condition: Box::new(condition),
+        body,
+        or_else,
+    })
+}
+
+fn function_def<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    preceded(
+        terminated("fn", ws),
+        cut_err((
+            terminated(ident, ws),
+            delimited(
+                ('(', ws),
+                separated0(ident, (ws, ',', ws)),
+                (ws, opt(','), ws, ')'),
+            )
+            .context("function params"),
+            preceded(ws, block),
+        )),
+    )
+    .context("function def")
+    .map(|(name, params, body)| Expr::Function {
+        name,
+        params: Vec::into(params),
+        body,
+    })
+    .parse_next(input)
 }
 
 fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -166,8 +218,12 @@ fn character<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<char, E> {
 }
 
 fn ident<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {
-    take_while(1.., |c| matches!(c, 'a'..='z'|'A'..='Z'|'_'))
+    (
+        character.verify(|c| c.is_ascii_alphabetic() || *c == '_'),
+        take_while(0.., |c: char| c.is_ascii_alphanumeric() || c == '_'),
+    )
         .context("ident")
+        .recognize()
         .map(Ident::from)
         .parse_next(input)
 }

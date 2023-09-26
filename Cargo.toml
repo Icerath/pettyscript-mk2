@@ -9,3 +9,4 @@ edition = "2021"
 codegen-units = 1
 
 [dependencies]
+pettyscript-parser = { path = "./pettyscript-parser" }
