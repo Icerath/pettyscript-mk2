@@ -187,3 +187,29 @@ fn test_fn_call() {
     parse_eq!("bar(1, 2);", call!(bar(1, 2)));
     parse_eq!("baz(foo());", call!(baz(call!(foo()))));
 }
+
+#[test]
+fn test_long_fn() {
+    parse_eq!(
+        r#"
+        fn foo(bar, baz) {
+            for i in range(bar) {
+                if i {
+                    print(baz);
+                } else{
+                    print("sadness");
+                }
+            }
+        }"#,
+        fn_!(foo (bar, baz) {
+            for_!(i in call!(range(ident!(bar))) => {
+                if_!(ident!(i) => {
+                    call!(print(ident!(baz)));
+                } else {
+                    call!(print ("sadness"));
+
+                })
+            })
+        })
+    )
+}
