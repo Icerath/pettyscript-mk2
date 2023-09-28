@@ -28,7 +28,13 @@ pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
 }
 
 fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    alt((list, literal.map(Expr::Literal), ident.map(Expr::Ident))).parse_next(input)
+    alt((
+        list,
+        literal.map(Expr::Literal),
+        fn_call,
+        ident.map(Expr::Ident),
+    ))
+    .parse_next(input)
 }
 
 fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -39,10 +45,7 @@ fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         if_statement.map(Expr::IfState),
         function_def,
         set_eq,
-        terminated(
-            alt((list, literal.map(Expr::Literal), ident.map(Expr::Ident))),
-            (ws, ';').context("semicolon"),
-        ),
+        terminated(expr, (ws, ';').context("semicolon")),
     ))
     .parse_next(input)
 }
@@ -212,6 +215,24 @@ fn literal_string<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<String, E> {
 
 fn character<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<char, E> {
     none_of('"').parse_next(input)
+}
+
+fn fn_call<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    (ident, ws, fn_args)
+        .map(|(ident, _, args)| Expr::FuncCall(ident, args))
+        .context("fn_call")
+        .parse_next(input)
+}
+
+fn fn_args<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Box<[Expr]>, E> {
+    cut_delimiter!(
+        ('(', ws),
+        separated0(expr, (ws, ',', ws)),
+        (ws, opt((',', ws)), ')')
+    )
+    .map(|exprs: Vec<Expr>| Box::from(exprs))
+    .context("fn_args")
+    .parse_next(input)
 }
 
 fn ident<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {

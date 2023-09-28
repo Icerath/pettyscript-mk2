@@ -77,6 +77,12 @@ macro_rules! fn_ {
     };
 }
 
+macro_rules! call {
+    ($ident: ident ($($expr:expr),* $(,)?)) => {
+        Expr::FuncCall(ident!($ident), vec![$($expr.into(),)*].into_boxed_slice())
+    };
+}
+
 #[test]
 fn test_literal_null() {
     parse_eq!(" null ; ", Literal::Null);
@@ -173,4 +179,11 @@ fn test_set_eq() {
         r#"hello = [1, 2, bye];"#,
         set_eq!(hello = list![1, 2, ident!(bye)])
     );
+}
+
+#[test]
+fn test_fn_call() {
+    parse_eq!("foo();", call!(foo()));
+    parse_eq!("bar(1, 2);", call!(bar(1, 2)));
+    parse_eq!("baz(foo());", call!(baz(call!(foo()))));
 }

@@ -19,6 +19,7 @@ pub enum Expr {
         params: Box<[Ident]>,
         body: Block,
     },
+    FuncCall(Ident, Box<[Expr]>),
     SetEq(Ident, Box<Expr>),
 }
 
