@@ -45,6 +45,13 @@ macro_rules! ident {
 }
 
 macro_rules! if_ {
+    ($condition: expr => { $($expr: expr);* $(;)* }) => {
+        Expr::IfState(IfState {
+            condition: Box::new($condition.into()),
+            body: block! { $($expr;)* },
+            or_else: OrElse::None,
+        })
+    };
     ($condition: expr => { $($expr: expr);* $(;)* } else { $($else_expr: expr);* $(;)* } $(,)? ) => {
         Expr::IfState(IfState {
             condition: Box::new($condition.into()),
@@ -52,12 +59,11 @@ macro_rules! if_ {
             or_else: OrElse::Block(block! { $($else_expr;)* }),
         })
     };
-    ($condition: expr => { $($expr: expr);* $(;)* }) => {
-        Expr::IfState(IfState {
-            condition: Box::new($condition.into()),
-            body: block! { $($expr;)* },
-            or_else: OrElse::None,
-        })
+}
+
+macro_rules! set_eq {
+    ($ident: ident = $value: expr) => {
+        Expr::SetEq(ident!($ident), Box::new($value.into()))
     };
 }
 
@@ -156,5 +162,15 @@ fn test_fn_def() {
     parse_eq!(
         r#"fn func (arg1, arg2) { "hello"; } "#,
         fn_!(func (arg1, arg2) { "hello"; })
+    );
+}
+
+#[test]
+fn test_set_eq() {
+    parse_eq!(r#"hello = 10;"#, set_eq!(hello = 10));
+    parse_eq!(r#"hello = "hello";"#, set_eq!(hello = "hello"));
+    parse_eq!(
+        r#"hello = [1, 2, bye];"#,
+        set_eq!(hello = list![1, 2, ident!(bye)])
     );
 }

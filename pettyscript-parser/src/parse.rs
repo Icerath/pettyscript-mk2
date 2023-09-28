@@ -28,17 +28,7 @@ pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
 }
 
 fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    alt((
-        block.map(Expr::Block),
-        while_loop,
-        for_loop,
-        if_statement.map(Expr::IfState),
-        function_def,
-        list,
-        literal.map(Expr::Literal),
-        ident.map(Expr::Ident),
-    ))
-    .parse_next(input)
+    alt((list, literal.map(Expr::Literal), ident.map(Expr::Ident))).parse_next(input)
 }
 
 fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -48,6 +38,7 @@ fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         for_loop,
         if_statement.map(Expr::IfState),
         function_def,
+        set_eq,
         terminated(
             alt((list, literal.map(Expr::Literal), ident.map(Expr::Ident))),
             (ws, ';').context("semicolon"),
@@ -141,6 +132,12 @@ fn function_def<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         body,
     })
     .parse_next(input)
+}
+
+fn set_eq<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    terminated((ident, delimited(ws, '=', ws), expr), ';')
+        .map(|(ident, _, expr)| Expr::SetEq(ident, Box::new(expr)))
+        .parse_next(input)
 }
 
 fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {

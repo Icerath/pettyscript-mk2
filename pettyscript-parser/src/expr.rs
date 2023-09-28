@@ -19,6 +19,7 @@ pub enum Expr {
         params: Box<[Ident]>,
         body: Block,
     },
+    SetEq(Ident, Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
