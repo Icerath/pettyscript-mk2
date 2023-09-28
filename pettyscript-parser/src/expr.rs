@@ -1,5 +1,10 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
+    Add(Box<(Expr, Expr)>),
+    Sub(Box<(Expr, Expr)>),
+    Mul(Box<(Expr, Expr)>),
+    Div(Box<(Expr, Expr)>),
+
     Literal(Literal),
     Ident(Ident),
     Block(Block),

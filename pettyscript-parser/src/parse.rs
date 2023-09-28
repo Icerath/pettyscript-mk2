@@ -1,6 +1,8 @@
 use crate::expr::{Block, Expr, Ident, IfState, Literal, OrElse};
+use crate::parse_binop;
 use std::fmt;
 use std::str::FromStr;
+use winnow::combinator::fail;
 use winnow::error::ErrMode;
 use winnow::prelude::*;
 use winnow::token::any;
@@ -13,7 +15,7 @@ use winnow::{
     token::{none_of, take_while},
 };
 
-type In<'a> = &'a str;
+pub type In<'a> = &'a str;
 
 pub trait RawErr<'a> = ParserError<In<'a>> + fmt::Debug;
 pub trait CtxErr<'a> = RawErr<'a> + AddContext<In<'a>, &'static str>;
@@ -28,8 +30,18 @@ pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
     preceded(ws, statement).parse_next(&mut input)
 }
 
-fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    alt((literal.map(Expr::Literal), fn_call, ident.map(Expr::Ident))).parse_next(input)
+pub(crate) fn atom<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    alt((
+        literal.map(Expr::Literal),
+        fn_call,
+        ident.map(Expr::Ident),
+        fail.context("atom"),
+    ))
+    .parse_next(input)
+}
+
+pub(crate) fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+    parse_binop::bin_expr.parse_next(input)
 }
 
 fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -41,6 +53,7 @@ fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         function_def,
         set_eq,
         terminated(expr, (ws, ';').context("semicolon")),
+        fail.context("statement"),
     ))
     .parse_next(input)
 }

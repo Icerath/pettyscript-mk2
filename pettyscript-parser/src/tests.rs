@@ -83,6 +83,12 @@ macro_rules! call {
     };
 }
 
+macro_rules! binop {
+    ($name: path: ($lhs: expr, $rhs: expr)) => {
+        $name(Box::new(($lhs.into(), $rhs.into())))
+    };
+}
+
 #[test]
 fn test_literal_null() {
     parse_eq!(" null ; ", Literal::Null);
@@ -212,4 +218,22 @@ fn test_long_fn() {
             })
         })
     )
+}
+
+#[test]
+fn test_binop() {
+    parse_eq!("1 + 2;", binop!(Expr::Add: (1, 2)));
+    parse_eq!("1 - 2;", binop!(Expr::Sub: (1, 2)));
+    parse_eq!("1 * 2;", binop!(Expr::Mul: (1, 2)));
+    parse_eq!("1 / 2;", binop!(Expr::Div: (1, 2)));
+
+    parse_eq!("(1 + 2);", binop!(Expr::Add: (1, 2)));
+    parse_eq!(
+        "1 + (2 - 3);",
+        binop!(Expr::Add: (1, binop!(Expr::Sub: (2, 3))))
+    );
+    parse_eq!(
+        "(1 + 2) - 3;",
+        binop!(Expr::Sub: (binop!(Expr::Add: (1, 2)), 3))
+    );
 }
