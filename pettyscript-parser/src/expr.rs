@@ -2,7 +2,6 @@
 pub enum Expr {
     Literal(Literal),
     Ident(Ident),
-    List(Box<[Expr]>),
     Block(Block),
     While {
         condition: Box<Expr>,
@@ -68,6 +67,7 @@ pub enum Literal {
     Int(i64),
     Float(f64),
     String(Box<str>),
+    List(Box<[Expr]>),
 }
 
 impl From<Block> for Expr {

@@ -3,6 +3,7 @@ use std::fmt;
 use std::str::FromStr;
 use winnow::error::ErrMode;
 use winnow::prelude::*;
+use winnow::token::any;
 use winnow::{
     ascii::{digit0, digit1},
     combinator::{alt, cut_err, opt},
@@ -28,13 +29,7 @@ pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
 }
 
 fn expr<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    alt((
-        list,
-        literal.map(Expr::Literal),
-        fn_call,
-        ident.map(Expr::Ident),
-    ))
-    .parse_next(input)
+    alt((literal.map(Expr::Literal), fn_call, ident.map(Expr::Ident))).parse_next(input)
 }
 
 fn statement<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -143,17 +138,6 @@ fn set_eq<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
         .parse_next(input)
 }
 
-fn list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
-    cut_delimiter!(
-        ('[', ws),
-        separated0(expr, (ws, ',', ws)),
-        (ws, opt((',', ws)), ']')
-    )
-    .map(|exprs: Vec<Expr>| Expr::List(Box::from(exprs)))
-    .context("list")
-    .parse_next(input)
-}
-
 fn literal<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Literal, E> {
     alt((
         "null".value(Literal::Null),
@@ -161,6 +145,7 @@ fn literal<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Literal, E> {
         literal_float.map(Literal::Float),
         literal_int.map(Literal::Int),
         literal_string.map(|string| Literal::String(Box::from(string))),
+        literal_list,
     ))
     .parse_next(input)
 }
@@ -201,6 +186,9 @@ where
 }
 
 fn literal_string<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<String, E> {
+    fn character<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<char, E> {
+        none_of('"').parse_next(input)
+    }
     cut_delimiter!(
         '"',
         fold_repeat(0.., character, String::new, |mut string, c| {
@@ -213,8 +201,15 @@ fn literal_string<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<String, E> {
     .parse_next(input)
 }
 
-fn character<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<char, E> {
-    none_of('"').parse_next(input)
+fn literal_list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Literal, E> {
+    cut_delimiter!(
+        ('[', ws),
+        separated0(expr, (ws, ',', ws)),
+        (ws, opt((',', ws)), ']')
+    )
+    .map(|exprs: Vec<Expr>| Literal::List(Box::from(exprs)))
+    .context("list")
+    .parse_next(input)
 }
 
 fn fn_call<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
@@ -237,7 +232,7 @@ fn fn_args<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Box<[Expr]>, E> {
 
 fn ident<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {
     (
-        character.verify(|c| c.is_ascii_alphabetic() || *c == '_'),
+        any.verify(|c: &char| c.is_ascii_alphabetic() || *c == '_'),
         take_while(0.., |c: char| c.is_ascii_alphanumeric() || c == '_'),
     )
         .context("ident")

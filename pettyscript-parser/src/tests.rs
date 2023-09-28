@@ -10,7 +10,7 @@ macro_rules! parse_eq {
 
 macro_rules! list {
     ($($expr: expr),* $(,)?) => {
-        Expr::List(vec![$( $expr.into(), )*].into_boxed_slice()) }
+        Literal::List(vec![$( $expr.into(), )*].into_boxed_slice()) }
 }
 
 macro_rules! block {
