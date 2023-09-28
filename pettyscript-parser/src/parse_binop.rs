@@ -45,10 +45,6 @@ fn term<'a, E: CtxErr<'a>>(i: &mut In<'a>) -> PResult<Expr, E> {
     .parse_next(i)
 }
 
-// We transform an integer string into a i64, ignoring surrounding whitespaces
-// We look for a digit suite, and try to convert it.
-// If either str::from_utf8 or FromStr::from_str fail,
-// we fallback to the parens parser defined above
 fn factor<'a, E: CtxErr<'a>>(i: &mut In<'a>) -> PResult<Expr, E> {
     delimited(space0, alt((atom, delimited('(', bin_expr, ')'))), space0)
         .context("factor")
