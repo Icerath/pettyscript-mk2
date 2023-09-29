@@ -7,7 +7,7 @@ use winnow::error::ErrMode;
 use winnow::prelude::*;
 use winnow::token::any;
 use winnow::{
-    ascii::{digit0, digit1},
+    ascii::digit1,
     combinator::{alt, cut_err, opt},
     combinator::{delimited, preceded, terminated},
     combinator::{fold_repeat, separated0},
@@ -33,7 +33,7 @@ pub fn parse<'a, E: CtxErr<'a>>(mut input: In<'a>) -> PResult<Expr, E> {
 pub(crate) fn atom<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
     alt((
         literal.map(Expr::Literal),
-        fn_call,
+        func_call,
         ident.map(Expr::Ident),
         fail.context("atom"),
     ))
@@ -170,7 +170,7 @@ fn literal_bool<'a, E: RawErr<'a>>(input: &mut In<'a>) -> PResult<bool, E> {
 }
 
 fn literal_float<'a, E: RawErr<'a>>(input: &mut In<'a>) -> PResult<f64, E> {
-    (opt(('-', ws)), digit1, '.', digit0)
+    (opt(('-', ws)), digit1, '.', digit1)
         .recognize()
         .map(raw_parse_num::<f64>)
         .parse_next(input)
@@ -225,7 +225,7 @@ fn literal_list<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Literal, E> {
     .parse_next(input)
 }
 
-fn fn_call<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
+pub(crate) fn func_call<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Expr, E> {
     (ident, ws, fn_args)
         .map(|(ident, _, args)| Expr::FuncCall(ident, args))
         .context("fn_call")
@@ -243,7 +243,7 @@ fn fn_args<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Box<[Expr]>, E> {
     .parse_next(input)
 }
 
-fn ident<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {
+pub(crate) fn ident<'a, E: CtxErr<'a>>(input: &mut In<'a>) -> PResult<Ident, E> {
     (
         any.verify(|c: &char| c.is_ascii_alphabetic() || *c == '_'),
         take_while(0.., |c: char| c.is_ascii_alphanumeric() || c == '_'),

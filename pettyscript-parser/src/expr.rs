@@ -1,6 +1,7 @@
 pub type BinOp = Box<(Expr, Expr)>;
 
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Expr {
     Add(BinOp),
     Sub(BinOp),
@@ -10,6 +11,8 @@ pub enum Expr {
     EqEq(BinOp),
     And(BinOp),
     Or(BinOp),
+
+    GetItem(Box<Expr>, Ident),
 
     Literal(Literal),
     Ident(Ident),
@@ -30,6 +33,7 @@ pub enum Expr {
         body: Block,
     },
     FuncCall(Ident, Box<[Expr]>),
+    MethodCall(Box<Expr>, Ident, Box<[Expr]>),
     SetEq(Ident, Box<Expr>),
 }
 

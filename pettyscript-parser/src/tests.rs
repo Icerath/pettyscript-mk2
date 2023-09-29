@@ -226,6 +226,14 @@ fn test_binop() {
     parse_eq!("1 - 2;", binop!(Expr::Sub: (1, 2)));
     parse_eq!("1 * 2;", binop!(Expr::Mul: (1, 2)));
     parse_eq!("1 / 2;", binop!(Expr::Div: (1, 2)));
+    parse_eq!("1 == 2;", binop!(Expr::EqEq: (1, 2)));
+    parse_eq!("1 && 2;", binop!(Expr::And: (1, 2)));
+    parse_eq!("1 || 2;", binop!(Expr::Or: (1, 2)));
+    parse_eq!("1.get;", Expr::GetItem(Box::new(1.into()), ident!(get)));
+    parse_eq!(
+        "1.get(0);",
+        Expr::MethodCall(Box::new(1.into()), ident!(get), vec![0.into()].into())
+    );
 
     parse_eq!("(1 + 2);", binop!(Expr::Add: (1, 2)));
     parse_eq!(
