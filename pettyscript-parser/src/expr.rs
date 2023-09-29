@@ -1,9 +1,15 @@
+pub type BinOp = Box<(Expr, Expr)>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    Add(Box<(Expr, Expr)>),
-    Sub(Box<(Expr, Expr)>),
-    Mul(Box<(Expr, Expr)>),
-    Div(Box<(Expr, Expr)>),
+    Add(BinOp),
+    Sub(BinOp),
+    Mul(BinOp),
+    Div(BinOp),
+
+    EqEq(BinOp),
+    And(BinOp),
+    Or(BinOp),
 
     Literal(Literal),
     Ident(Ident),
